@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
+import 'recommendation_page.dart';
 
 class CameraPage extends StatefulWidget {
   const CameraPage({super.key});
@@ -63,7 +64,12 @@ class _CameraPageState extends State<CameraPage> {
       _inputHeight = inputTensor.shape[2];
 
       final labelData = await rootBundle.loadString('assets/labels.txt');
-      _labels = labelData.split('\n').where((s) => s.isNotEmpty).toList();
+      _labels = labelData
+          .split('\n')
+          .map((s) => s.trim()) // <--- THIS FIXES THE BUG
+          .where((s) => s.isNotEmpty)
+          .toList();
+      //_labels = labelData.split('\n').where((s) => s.isNotEmpty).toList();
     } catch (e) {
       setState(() => _mainLabel = "Model Error: $e");
     }
@@ -399,12 +405,16 @@ class _CameraPageState extends State<CameraPage> {
                 backgroundColor: Colors.blueAccent
               ),
               onPressed: () {
+                // 1. Calculate the result
                 String result = _calculateAverage();
-                showDialog(context: context, builder: (_) => AlertDialog(
-                  title: const Text("5s Result"),
-                  content: Text("Average Emotion: $result"),
-                  actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
-                ));
+                
+                // 2. Navigate to the new page!
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RecommendationPage(emotion: result),
+                  ),
+                );
               },
               child: const Text("CAPTURE 5s AVERAGE", style: TextStyle(color: Colors.white, fontSize: 18)),
             ),
