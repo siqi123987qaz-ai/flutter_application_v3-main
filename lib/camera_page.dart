@@ -28,15 +28,21 @@ class _CameraPageState extends State<CameraPage> {
   );
   Interpreter? _interpreter;
   List<String> _labels = [];
-  final List<Map<String, dynamic>> _emotionBuffer = [];
-
+  
+  // --- SMART LOGIC VARIABLES ---
+  // Reduced to 6 for faster mobile response (Python used 15)
+  final List<String> _emotionHistory = []; 
+  static const int _historyMaxLen = 6;
+  
+  // UI Variables
+  String _mainLabel = "Init..."; 
+  String _subLabel = ""; // Shows debug info (e.g. "Raw: Sad 60%")
+  
   int _inputWidth = 48;
   int _inputHeight = 48;
-
   bool _isProcessing = false;
   List<Face> _faces = [];
-  String _winnerLabel = "Init..."; 
-  Map<String, double> _allScores = {}; // Stores scores for all emotions
+  final List<Map<String, dynamic>> _captureBuffer = []; // For the 5s average button
 
   @override
   void initState() {
@@ -51,7 +57,7 @@ class _CameraPageState extends State<CameraPage> {
 
   Future<void> _loadModelAndLabels() async {
     try {
-      _interpreter = await Interpreter.fromAsset('assets/emotions_model.tflite');
+      _interpreter = await Interpreter.fromAsset('assets/emotions_model_sajal.tflite');
       var inputTensor = _interpreter!.getInputTensors().first;
       _inputWidth = inputTensor.shape[1];
       _inputHeight = inputTensor.shape[2];
@@ -59,14 +65,13 @@ class _CameraPageState extends State<CameraPage> {
       final labelData = await rootBundle.loadString('assets/labels.txt');
       _labels = labelData.split('\n').where((s) => s.isNotEmpty).toList();
     } catch (e) {
-      setState(() => _winnerLabel = "Model Error");
+      setState(() => _mainLabel = "Model Error: $e");
     }
   }
 
   Future<void> _initializeCamera() async {
     final cameras = await availableCameras();
     if (cameras.isEmpty) return;
-
     final frontCamera = cameras.firstWhere(
       (c) => c.lensDirection == CameraLensDirection.front,
       orElse: () => cameras.first,
@@ -82,7 +87,6 @@ class _CameraPageState extends State<CameraPage> {
     );
 
     await _controller!.initialize();
-    
     _controller!.startImageStream((CameraImage image) {
       if (!_isProcessing) {
         _isProcessing = true;
@@ -99,18 +103,19 @@ class _CameraPageState extends State<CameraPage> {
       if (inputImage == null) return;
 
       final faces = await _faceDetector.processImage(inputImage);
-      
       if (mounted) setState(() => _faces = faces);
 
       if (faces.isEmpty) {
-        if (mounted) setState(() { _winnerLabel = "No Face"; _allScores = {}; });
+        if (mounted) setState(() { 
+          _mainLabel = "No Face"; 
+          _subLabel = "";
+          _emotionHistory.clear(); 
+        });
         return;
       }
 
-      Face face = faces.first;
-      
       if (_interpreter != null) {
-        _runEmotionModel(image, face, camera);
+        _runEmotionModel(image, faces.first, camera);
       }
     } catch (e) {
       print("Error: $e");
@@ -140,7 +145,7 @@ class _CameraPageState extends State<CameraPage> {
       img.Image faceCrop = img.copyCrop(uprightImage, x: x, y: y, width: w, height: h);
       img.Image resized = img.copyResize(faceCrop, width: _inputWidth, height: _inputHeight);
 
-      // 4. PREP
+      // 4. PREP INPUT (Simple Normalization / 255.0)
       var input = Float32List(1 * _inputWidth * _inputHeight * 1);
       int pixelIndex = 0;
       for (int i = 0; i < _inputHeight; i++) {
@@ -155,49 +160,104 @@ class _CameraPageState extends State<CameraPage> {
       var output = List.filled(1 * numClasses, 0.0).reshape([1, numClasses]);
       _interpreter!.run(input.reshape([1, _inputWidth, _inputHeight, 1]), output);
 
-      // 6. SOFTMAX & PARSE
-      List<double> rawScores = output[0];
-      List<double> probabilities = _softmax(rawScores);
-
-      Map<String, double> tempScores = {};
-      double maxScore = -1;
-      String topLabel = "Unknown";
-
-      for (int i = 0; i < probabilities.length; i++) {
-        String label = (i < _labels.length) ? _labels[i] : "Id$i";
-        double score = probabilities[i];
-        
-        tempScores[label] = score;
-        if (score > maxScore) {
-          maxScore = score;
-          topLabel = label;
-        }
-      }
-
-      // 7. UPDATE UI
-      if (mounted) {
-        setState(() {
-          _winnerLabel = "$topLabel ${(maxScore*100).toInt()}%";
-          _allScores = tempScores;
-        });
-        
-        // Save for "Capture" button
-        _addToBuffer(topLabel, maxScore);
-      }
+      // 6. LOGIC: Bias Correction & Smoothing
+      _applySmartLogic(output[0]);
 
     } catch (e) {
       print("AI Error: $e");
     }
   }
 
-  List<double> _softmax(List<double> logits) {
-    double maxLogit = logits.reduce(math.max);
-    List<double> exps = logits.map((e) => math.exp(e - maxLogit)).toList();
-    double sumExps = exps.reduce((a, b) => a + b);
-    return exps.map((e) => e / sumExps).toList();
+  void _applySmartLogic(List<double> scores) {
+    // A. Find Raw Winner
+    double maxScore = -1;
+    int maxIndex = -1;
+    for(int i=0; i < scores.length; i++) {
+      if (scores[i] > maxScore) {
+        maxScore = scores[i];
+        maxIndex = i;
+      }
+    }
+    String rawEmotion = _labels[maxIndex];
+    String currentEmotion = rawEmotion;
+    String debugNote = "";
+
+    // B. BIAS CORRECTION (Ported from she.py)
+    
+    // 1. Fix Neutral vs Sad
+    // "If model says Sad but is <70% sure, check if Neutral is a close second"
+    if (currentEmotion == 'Sad' && maxScore < 0.7) {
+      int neutralIdx = _labels.indexOf('Neutral');
+      if (neutralIdx != -1) {
+        double neutralScore = scores[neutralIdx];
+        if (neutralScore > 0.3 && (maxScore - neutralScore).abs() < 0.2) {
+          currentEmotion = 'Neutral';
+          debugNote = "(Sad->Neu)";
+        }
+      }
+    }
+
+    // 2. Fix Rare Emotions (Fear, Disgust)
+    // "If model says Fear/Disgust but is <80% sure, fallback to 2nd best"
+    if ((currentEmotion == 'Disgust' || currentEmotion == 'Fear') && maxScore < 0.8) {
+      // Find 2nd best
+      int secondBestIdx = -1;
+      double secondBestScore = -1;
+      for(int i=0; i < scores.length; i++) {
+        if (i == maxIndex) continue;
+        if (scores[i] > secondBestScore) {
+          secondBestScore = scores[i];
+          secondBestIdx = i;
+        }
+      }
+      
+      if (secondBestIdx != -1) {
+        String secondEmotion = _labels[secondBestIdx];
+        // Ensure 2nd best isn't also rare, and has decent score
+        if (secondEmotion != 'Disgust' && secondEmotion != 'Fear' && secondBestScore > 0.4) {
+          currentEmotion = secondEmotion;
+          debugNote = "($rawEmotion->$currentEmotion)";
+        }
+      }
+    }
+
+    // C. TEMPORAL SMOOTHING (Majority Vote)
+    _emotionHistory.add(currentEmotion);
+    if (_emotionHistory.length > _historyMaxLen) {
+      _emotionHistory.removeAt(0);
+    }
+
+    String smoothedEmotion = _getMostCommonEmotion(_emotionHistory);
+
+    if (mounted) {
+      setState(() {
+        _mainLabel = smoothedEmotion;
+        // Show raw prediction + any corrections
+        _subLabel = "Raw: $rawEmotion ${(maxScore*100).toInt()}% $debugNote";
+      });
+      // Save for button
+      _addToCaptureBuffer(smoothedEmotion, maxScore);
+    }
   }
 
-  // --- SAFE Y-ONLY CONVERTER ---
+  String _getMostCommonEmotion(List<String> history) {
+    if (history.isEmpty) return "Unknown";
+    Map<String, int> counts = {};
+    for (var emo in history) {
+      counts[emo] = (counts[emo] ?? 0) + 1;
+    }
+    String bestEmo = history.last;
+    int maxCount = -1;
+    counts.forEach((emo, count) {
+      if (count > maxCount) {
+        maxCount = count;
+        bestEmo = emo;
+      }
+    });
+    return bestEmo;
+  }
+
+  // --- STANDARD HELPERS ---
   img.Image? _convertYOnly(CameraImage image) {
     try {
       final int width = image.width;
@@ -260,16 +320,16 @@ class _CameraPageState extends State<CameraPage> {
     DeviceOrientation.landscapeRight: 270,
   };
 
-  void _addToBuffer(String emotion, double score) {
-    _emotionBuffer.add({'emotion': emotion, 'score': score, 'time': DateTime.now()});
+  void _addToCaptureBuffer(String emotion, double score) {
+    _captureBuffer.add({'emotion': emotion, 'score': score, 'time': DateTime.now()});
     final fiveSecsAgo = DateTime.now().subtract(const Duration(seconds: 5));
-    _emotionBuffer.removeWhere((e) => (e['time'] as DateTime).isBefore(fiveSecsAgo));
+    _captureBuffer.removeWhere((e) => (e['time'] as DateTime).isBefore(fiveSecsAgo));
   }
 
   String _calculateAverage() {
-    if (_emotionBuffer.isEmpty) return "No data";
+    if (_captureBuffer.isEmpty) return "No data";
     Map<String, double> totals = {};
-    for (var entry in _emotionBuffer) {
+    for (var entry in _captureBuffer) {
       String emo = entry['emotion'];
       totals[emo] = (totals[emo] ?? 0) + (entry['score'] as double);
     }
@@ -292,77 +352,61 @@ class _CameraPageState extends State<CameraPage> {
   @override
   Widget build(BuildContext context) {
     if (!_isCameraInitialized) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-
     final size = MediaQuery.of(context).size;
     var cameraSize = _controller!.value.previewSize!;
     double scaleX = size.width / cameraSize.height;
     double scaleY = size.height / cameraSize.width;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Live Scoreboard")),
+      appBar: AppBar(title: const Text("Smart Emotion Scanner")),
       body: Stack(
         children: [
-          // 1. Camera Feed
+          // 1. Camera
           SizedBox(width: size.width, height: size.height, child: CameraPreview(_controller!)),
           
-          // 2. Face Box
+          // 2. Face Box & Label
           if (_faces.isNotEmpty) ...[
             CustomPaint(painter: FacePainter(_faces.first, scaleX, scaleY), child: Container()),
-            // Winner Label
             Positioned(
-              top: _faces.first.boundingBox.top * scaleY - 60,
+              top: _faces.first.boundingBox.top * scaleY - 70,
               left: _faces.first.boundingBox.left * scaleX,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 color: Colors.red,
-                child: Text(
-                  _winnerLabel,
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _mainLabel,
+                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      _subLabel,
+                      style: const TextStyle(color: Colors.yellowAccent, fontSize: 12),
+                    ),
+                  ],
                 ),
               ),
             ),
           ],
 
-          // 3. SCOREBOARD (Right Side)
-          Positioned(
-            top: 20, right: 10,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              color: Colors.black.withOpacity(0.6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("LIVE SCORES:", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 5),
-                  ..._labels.map((label) {
-                    double score = _allScores[label] ?? 0.0;
-                    bool isWinner = _winnerLabel.startsWith(label);
-                    return Text(
-                      "$label: ${(score*100).toStringAsFixed(1)}%",
-                      style: TextStyle(
-                        color: isWinner ? Colors.greenAccent : Colors.white,
-                        fontSize: 14,
-                        fontWeight: isWinner ? FontWeight.bold : FontWeight.normal
-                      ),
-                    );
-                  })
-                ],
-              ),
-            ),
-          ),
-
-          // 4. Capture Button
+          // 3. CAPTURE BUTTON (Restored!)
           Positioned(
             bottom: 40, left: 30, right: 30,
             child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Colors.blueAccent
+              ),
               onPressed: () {
                 String result = _calculateAverage();
                 showDialog(context: context, builder: (_) => AlertDialog(
                   title: const Text("5s Result"),
-                  content: Text("Average: $result"),
+                  content: Text("Average Emotion: $result"),
+                  actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
                 ));
               },
-              child: const Text("CAPTURE 5s"),
+              child: const Text("CAPTURE 5s AVERAGE", style: TextStyle(color: Colors.white, fontSize: 18)),
             ),
           )
         ],

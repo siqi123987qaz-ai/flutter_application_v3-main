@@ -29,3 +29,5 @@ flutter:
   assets:
     - assets/emotions_model.tflite
     - assets/labels.txt
+    - assets/emotions_model2.tflite
+    - assets/emotions_model_sajal.tflite
