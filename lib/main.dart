@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'login_register_page.dart';
+import 'camera_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +50,21 @@ class HomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text('You are logged in!'),
+            const SizedBox(height: 20),
+            
+            // --- NEW BUTTON ---
+            ElevatedButton(
+              onPressed: () {
+                // Navigate to the Camera Page
+                Navigator.push(
+                  context, 
+                  MaterialPageRoute(builder: (context) => const CameraPage())
+                );
+              },
+              child: const Text('Test Camera'),
+            ),
+            // ------------------
+
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {

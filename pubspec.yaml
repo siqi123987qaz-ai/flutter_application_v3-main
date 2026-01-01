@@ -13,7 +13,11 @@ dependencies:
   firebase_auth: ^5.5.4
   flutter_facebook_auth: ^7.1.2
   camera: ^0.11.0
-  http: ^1.2.0
+  permission_handler: ^11.0.0
+  google_mlkit_face_detection: ^0.13.0
+  tflite_flutter: ^0.11.0 # For running the AI model
+  image: ^4.5.0 # For cropping the face image
+
 
 dev_dependencies:
   flutter_test:
@@ -22,3 +26,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/emotions_model.tflite
+    - assets/labels.txt
