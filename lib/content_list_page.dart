@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart'; // Import the launcher
+import 'browser_page.dart'; // <--- IMPORT THE NEW PAGE
 
 class ContentListPage extends StatelessWidget {
   final String emotion;
@@ -12,20 +12,6 @@ class ContentListPage extends StatelessWidget {
     required this.category,
     required this.themeColor
   });
-
-  // --- FUNCTION TO OPEN LINKS ---
-  Future<void> _launchURL(BuildContext context, String urlString) async {
-    final Uri url = Uri.parse(urlString);
-    try {
-      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-        throw 'Could not launch $url';
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Could not open link: $e"), backgroundColor: Colors.red),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,19 +41,33 @@ class ContentListPage extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.bold)
                 ),
                 subtitle: Text(item['subtitle']!),
-                trailing: const Icon(Icons.open_in_new, size: 18, color: Colors.grey),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                
+                // --- NEW NAVIGATION LOGIC ---
                 onTap: () {
-                  // Open the Real URL
                   if (item['url'] != null && item['url']!.isNotEmpty) {
-                    _launchURL(context, item['url']!);
+                    // Navigate to Internal Browser
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BrowserPage(
+                          url: item['url']!,
+                          title: item['title']!,
+                          themeColor: themeColor,
+                        ),
+                      ),
+                    );
                   }
                 },
+                // -----------------------------
               );
             },
           ),
     );
   }
 
+  // ... (Keep the rest of your _getIconForCategory and _getSpecificContent code exactly the same) ...
+  // (Paste the _getSpecificContent database from previous step here)
   IconData _getIconForCategory(String category) {
     switch (category) {
       case 'Songs': return Icons.music_note;
@@ -78,9 +78,12 @@ class ContentListPage extends StatelessWidget {
     }
   }
 
-  // --- THE DATA DATABASE (Now with REAL LINKS) ---
   List<Map<String, String>> _getSpecificContent(String emotion, String category) {
-    final String cleanEmotion = emotion.trim(); 
+      // ... PASTE YOUR DATABASE CODE HERE FROM PREVIOUS STEPS ...
+      // (This is the long list of "if emotion == Angry return ...")
+      // I will not repeat it here to save space, but make sure it is inside this class.
+      
+      final String cleanEmotion = emotion.trim(); 
 
     // 1. ANGRY 😡
     if (cleanEmotion == 'Angry') {
