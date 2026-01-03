@@ -1,14 +1,13 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
-import 'recommendation_page.dart';
-import 'history_service.dart';
+import 'history_service.dart'; 
+import 'analytics_page.dart'; // <--- NEW IMPORT
 
 class CameraPage extends StatefulWidget {
   const CameraPage({super.key});
@@ -32,19 +31,21 @@ class _CameraPageState extends State<CameraPage> {
   List<String> _labels = [];
   
   // --- SMART LOGIC VARIABLES ---
-  // Reduced to 6 for faster mobile response (Python used 15)
   final List<String> _emotionHistory = []; 
   static const int _historyMaxLen = 6;
   
   // UI Variables
   String _mainLabel = "Init..."; 
-  String _subLabel = ""; // Shows debug info (e.g. "Raw: Sad 60%")
+  String _subLabel = ""; 
   
+  // --- NEW: STORES THE DATA FOR THE REPORT ---
+  Map<String, double> _allScores = {}; 
+  // ------------------------------------------
+
   int _inputWidth = 48;
   int _inputHeight = 48;
   bool _isProcessing = false;
   List<Face> _faces = [];
-  final List<Map<String, dynamic>> _captureBuffer = []; // For the 5s average button
 
   @override
   void initState() {
@@ -65,12 +66,7 @@ class _CameraPageState extends State<CameraPage> {
       _inputHeight = inputTensor.shape[2];
 
       final labelData = await rootBundle.loadString('assets/labels.txt');
-      _labels = labelData
-          .split('\n')
-          .map((s) => s.trim()) // <--- THIS FIXES THE BUG
-          .where((s) => s.isNotEmpty)
-          .toList();
-      //_labels = labelData.split('\n').where((s) => s.isNotEmpty).toList();
+      _labels = labelData.split('\n').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
     } catch (e) {
       setState(() => _mainLabel = "Model Error: $e");
     }
@@ -88,9 +84,7 @@ class _CameraPageState extends State<CameraPage> {
       frontCamera,
       ResolutionPreset.medium, 
       enableAudio: false,
-      imageFormatGroup: Platform.isAndroid 
-          ? ImageFormatGroup.nv21 
-          : ImageFormatGroup.bgra8888,
+      imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.nv21 : ImageFormatGroup.bgra8888,
     );
 
     await _controller!.initialize();
@@ -117,6 +111,7 @@ class _CameraPageState extends State<CameraPage> {
           _mainLabel = "No Face"; 
           _subLabel = "";
           _emotionHistory.clear(); 
+          _allScores = {}; 
         });
         return;
       }
@@ -133,17 +128,14 @@ class _CameraPageState extends State<CameraPage> {
 
   void _runEmotionModel(CameraImage cameraImage, Face face, CameraDescription camera) {
     try {
-      // 1. SAFE CONVERT
       img.Image? rawImage = _convertYOnly(cameraImage);
       if (rawImage == null) return;
 
-      // 2. ROTATE & MIRROR
       img.Image uprightImage = img.copyRotate(rawImage, angle: camera.sensorOrientation);
       if (camera.lensDirection == CameraLensDirection.front) {
         uprightImage = img.flipHorizontal(uprightImage);
       }
 
-      // 3. CROP
       int x = face.boundingBox.left.toInt().clamp(0, uprightImage.width - 1);
       int y = face.boundingBox.top.toInt().clamp(0, uprightImage.height - 1);
       int w = face.boundingBox.width.toInt().clamp(1, uprightImage.width - x);
@@ -152,7 +144,6 @@ class _CameraPageState extends State<CameraPage> {
       img.Image faceCrop = img.copyCrop(uprightImage, x: x, y: y, width: w, height: h);
       img.Image resized = img.copyResize(faceCrop, width: _inputWidth, height: _inputHeight);
 
-      // 4. PREP INPUT (Simple Normalization / 255.0)
       var input = Float32List(1 * _inputWidth * _inputHeight * 1);
       int pixelIndex = 0;
       for (int i = 0; i < _inputHeight; i++) {
@@ -162,12 +153,10 @@ class _CameraPageState extends State<CameraPage> {
         }
       }
 
-      // 5. INFERENCE
       int numClasses = _labels.length > 0 ? _labels.length : 7;
       var output = List.filled(1 * numClasses, 0.0).reshape([1, numClasses]);
       _interpreter!.run(input.reshape([1, _inputWidth, _inputHeight, 1]), output);
 
-      // 6. LOGIC: Bias Correction & Smoothing
       _applySmartLogic(output[0]);
 
     } catch (e) {
@@ -176,7 +165,15 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   void _applySmartLogic(List<double> scores) {
-    // A. Find Raw Winner
+    // 1. Convert List to Map for the Report
+    Map<String, double> tempScores = {};
+    for(int i=0; i<scores.length; i++) {
+      if (i < _labels.length) {
+        tempScores[_labels[i]] = scores[i];
+      }
+    }
+
+    // 2. Find Raw Winner
     double maxScore = -1;
     int maxIndex = -1;
     for(int i=0; i < scores.length; i++) {
@@ -189,10 +186,7 @@ class _CameraPageState extends State<CameraPage> {
     String currentEmotion = rawEmotion;
     String debugNote = "";
 
-    // B. BIAS CORRECTION (Ported from she.py)
-    
-    // 1. Fix Neutral vs Sad
-    // "If model says Sad but is <70% sure, check if Neutral is a close second"
+    // 3. Bias Correction Logic
     if (currentEmotion == 'Sad' && maxScore < 0.7) {
       int neutralIdx = _labels.indexOf('Neutral');
       if (neutralIdx != -1) {
@@ -204,10 +198,7 @@ class _CameraPageState extends State<CameraPage> {
       }
     }
 
-    // 2. Fix Rare Emotions (Fear, Disgust)
-    // "If model says Fear/Disgust but is <80% sure, fallback to 2nd best"
     if ((currentEmotion == 'Disgust' || currentEmotion == 'Fear') && maxScore < 0.8) {
-      // Find 2nd best
       int secondBestIdx = -1;
       double secondBestScore = -1;
       for(int i=0; i < scores.length; i++) {
@@ -220,7 +211,6 @@ class _CameraPageState extends State<CameraPage> {
       
       if (secondBestIdx != -1) {
         String secondEmotion = _labels[secondBestIdx];
-        // Ensure 2nd best isn't also rare, and has decent score
         if (secondEmotion != 'Disgust' && secondEmotion != 'Fear' && secondBestScore > 0.4) {
           currentEmotion = secondEmotion;
           debugNote = "($rawEmotion->$currentEmotion)";
@@ -228,7 +218,7 @@ class _CameraPageState extends State<CameraPage> {
       }
     }
 
-    // C. TEMPORAL SMOOTHING (Majority Vote)
+    // 4. Temporal Smoothing
     _emotionHistory.add(currentEmotion);
     if (_emotionHistory.length > _historyMaxLen) {
       _emotionHistory.removeAt(0);
@@ -239,11 +229,9 @@ class _CameraPageState extends State<CameraPage> {
     if (mounted) {
       setState(() {
         _mainLabel = smoothedEmotion;
-        // Show raw prediction + any corrections
         _subLabel = "Raw: $rawEmotion ${(maxScore*100).toInt()}% $debugNote";
+        _allScores = tempScores; // Update the variable for the report
       });
-      // Save for button
-      _addToCaptureBuffer(smoothedEmotion, maxScore);
     }
   }
 
@@ -327,27 +315,6 @@ class _CameraPageState extends State<CameraPage> {
     DeviceOrientation.landscapeRight: 270,
   };
 
-  void _addToCaptureBuffer(String emotion, double score) {
-    _captureBuffer.add({'emotion': emotion, 'score': score, 'time': DateTime.now()});
-    final fiveSecsAgo = DateTime.now().subtract(const Duration(seconds: 5));
-    _captureBuffer.removeWhere((e) => (e['time'] as DateTime).isBefore(fiveSecsAgo));
-  }
-
-  String _calculateAverage() {
-    if (_captureBuffer.isEmpty) return "No data";
-    Map<String, double> totals = {};
-    for (var entry in _captureBuffer) {
-      String emo = entry['emotion'];
-      totals[emo] = (totals[emo] ?? 0) + (entry['score'] as double);
-    }
-    String topEmotion = "Unknown";
-    double topScore = -1;
-    totals.forEach((key, value) {
-      if (value > topScore) { topScore = value; topEmotion = key; }
-    });
-    return topEmotion;
-  }
-
   @override
   void dispose() {
     _controller?.dispose();
@@ -368,10 +335,7 @@ class _CameraPageState extends State<CameraPage> {
       appBar: AppBar(title: const Text("Smart Emotion Scanner")),
       body: Stack(
         children: [
-          // 1. Camera
           SizedBox(width: size.width, height: size.height, child: CameraPreview(_controller!)),
-          
-          // 2. Face Box & Label
           if (_faces.isNotEmpty) ...[
             CustomPaint(painter: FacePainter(_faces.first, scaleX, scaleY), child: Container()),
             Positioned(
@@ -397,7 +361,7 @@ class _CameraPageState extends State<CameraPage> {
             ),
           ],
 
-          // 3. CAPTURE BUTTON (Restored!)
+          // --- DIAGNOSE BUTTON ---
           Positioned(
             bottom: 40, left: 30, right: 30,
             child: ElevatedButton(
@@ -406,22 +370,30 @@ class _CameraPageState extends State<CameraPage> {
                 backgroundColor: Colors.blueAccent
               ),
               onPressed: () {
-                // 1. Calculate the result
-                String result = _calculateAverage();
-
-                // --- NEW: SAVE TO HISTORY ---
-                HistoryService.saveMood(result, "Face Scan Analysis");
-                // -----------------------------
+                // 1. Get the Data
+                Map<String, double> finalScores = Map.from(_allScores);
                 
-                // 2. Navigate to the new page!
+                // Fallback if empty (clicked too fast)
+                if (finalScores.isEmpty) {
+                   finalScores = {'Neutral': 1.0};
+                }
+
+                // 2. Find Winner for History
+                String winner = "Neutral";
+                double max = -1;
+                finalScores.forEach((k,v) { if(v>max){max=v; winner=k;} });
+
+                // 3. Save History
+                HistoryService.saveMood(winner, "Face Scan Analysis", finalScores);
+                // 4. Navigate to NEW REPORT PAGE
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => RecommendationPage(emotion: result),
+                    builder: (context) => AnalyticsPage(scores: finalScores),
                   ),
                 );
               },
-              child: const Text("CAPTURE 5s AVERAGE", style: TextStyle(color: Colors.white, fontSize: 18)),
+              child: const Text("DIAGNOSE & REPORT", style: TextStyle(color: Colors.white, fontSize: 18)),
             ),
           )
         ],

@@ -4,28 +4,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 class HistoryService {
   static const String _key = 'mood_history';
 
-  // Save a new record
-  static Future<void> saveMood(String emotion, String note) async {
+  // UPDATED: Now accepts 'scores' map
+  static Future<void> saveMood(String winner, String note, Map<String, double>? scores) async {
     final prefs = await SharedPreferences.getInstance();
     
-    // 1. Create the record
+    // Create the record
     Map<String, dynamic> record = {
-      'emotion': emotion,
+      'emotion': winner,
       'note': note,
+      'scores': scores ?? {winner: 1.0}, // Save full data (or fallback)
       'date': DateTime.now().toIso8601String(),
     };
 
-    // 2. Get existing list
+    // Get old list
     List<String> history = prefs.getStringList(_key) ?? [];
     
-    // 3. Add new record (convert to string)
-    history.insert(0, jsonEncode(record)); // Add to top
+    // Add new (at top)
+    history.insert(0, jsonEncode(record));
     
-    // 4. Save back
+    // Save
     await prefs.setStringList(_key, history);
   }
 
-  // Get all records
   static Future<List<Map<String, dynamic>>> getHistory() async {
     final prefs = await SharedPreferences.getInstance();
     List<String> history = prefs.getStringList(_key) ?? [];
@@ -33,7 +33,6 @@ class HistoryService {
     return history.map((item) => jsonDecode(item) as Map<String, dynamic>).toList();
   }
 
-  // Clear history (Optional)
   static Future<void> clearHistory() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);

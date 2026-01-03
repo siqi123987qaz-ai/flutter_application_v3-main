@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'history_service.dart';
-import 'recommendation_page.dart';
+import 'analytics_page.dart'; // <--- Now opens Analytics, not Recommendation
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -66,16 +66,31 @@ class _HistoryPageState extends State<HistoryPage> {
                         Text(dateString, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                       ],
                     ),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                    trailing: const Icon(Icons.assessment, size: 20, color: Colors.blue), // Icon changed to Chart
+                    
+                    // --- NEW NAVIGATION LOGIC ---
                     onTap: () {
-                      // Re-open recommendation
+                      // 1. Retrieve the saved scores
+                      // (We need to convert them carefully from JSON)
+                      Map<String, dynamic> rawScores = item['scores'] ?? {};
+                      Map<String, double> cleanScores = {};
+                      
+                      if (rawScores.isNotEmpty) {
+                        rawScores.forEach((k, v) => cleanScores[k] = (v as num).toDouble());
+                      } else {
+                        // Fallback for very old records
+                        cleanScores = {emotion: 1.0};
+                      }
+
+                      // 2. Open the LAB REPORT
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => RecommendationPage(emotion: emotion),
+                          builder: (context) => AnalyticsPage(scores: cleanScores),
                         ),
                       );
                     },
+                    // -----------------------------
                   ),
                 );
               },
@@ -84,19 +99,24 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Color _getColor(String emotion) {
-    if (emotion == 'Happy') return Colors.green;
-    if (emotion == 'Sad') return Colors.blue;
-    if (emotion == 'Angry') return Colors.red;
-    return Colors.grey;
+    switch(emotion) {
+      case 'Happy': return Colors.green;
+      case 'Sad': return Colors.blue;
+      case 'Angry': return Colors.red;
+      case 'Fear': return Colors.purple;
+      default: return Colors.grey;
+    }
   }
 
   String _getEmoji(String emotion) {
-    if (emotion == 'Happy') return "😊";
-    if (emotion == 'Sad') return "😢";
-    if (emotion == 'Angry') return "😡";
-    if (emotion == 'Fear') return "😨";
-    if (emotion == 'Surprise') return "😲";
-    if (emotion == 'Disgust') return "🤢";
-    return "😐";
+    switch(emotion) {
+      case 'Happy': return "😊";
+      case 'Sad': return "😢";
+      case 'Angry': return "😡";
+      case 'Fear': return "😨";
+      case 'Surprise': return "😲";
+      case 'Disgust': return "🤢";
+      default: return "😐";
+    }
   }
 }

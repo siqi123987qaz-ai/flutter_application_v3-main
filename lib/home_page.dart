@@ -4,6 +4,7 @@ import 'camera_page.dart';
 import 'recommendation_page.dart';
 import 'history_service.dart';
 import 'history_page.dart';
+import 'analytics_page.dart'; // <--- NEW IMPORT
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -30,26 +31,37 @@ class _HomePageState extends State<HomePage> {
     // 2. Close Keyboard
     FocusScope.of(context).unfocus();
 
-    // --- NEW: CRISIS INTERVENTION CHECK 🛑 ---
+    // --- CRISIS INTERVENTION CHECK 🛑 ---
     if (_isCrisis(text)) {
       _showCrisisDialog();
-      return; // STOP HERE. Do not proceed to recommendation.
+      return;
     }
-    // ----------------------------------------
+    // ------------------------------------
 
-    // 3. Normal Analysis
-    String detectedEmotion = SentimentEngine.analyze(text);
+    // 3. Normal Analysis (Now gets the Full Report)
+    // Returns: {'Happy': 0.8, 'Neutral': 0.2, ...}
+    Map<String, double> analysisScores = SentimentEngine.analyze(text);
 
-    // 4. Save & Navigate
-    HistoryService.saveMood(detectedEmotion, text);
+    // 4. Find "Winner" (For History Saving)
+    String winner = "Neutral";
+    double max = -1;
+    analysisScores.forEach((k, v) { 
+      if(v > max){ max = v; winner = k; } 
+    });
+
+    // 5. Save & Navigate
+    HistoryService.saveMood(winner, text, analysisScores);
+    
     _textController.clear();
     
     if (!mounted) return;
 
+    // 6. Navigate to THE LAB REPORT (Analytics Page)
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RecommendationPage(emotion: detectedEmotion),
+        // We pass the FULL MAP here
+        builder: (context) => AnalyticsPage(scores: analysisScores),
       ),
     );
   }
@@ -72,7 +84,7 @@ class _HomePageState extends State<HomePage> {
   void _showCrisisDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // User MUST click a button
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
@@ -95,7 +107,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
+              Navigator.pop(context);
               _textController.clear();
             },
             child: const Text("I'm Safe", style: TextStyle(color: Colors.grey)),
@@ -103,8 +115,6 @@ class _HomePageState extends State<HomePage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
-              // In a real app, this would call 911/Helpline
-              // For now, we just close, but you can use url_launcher 'tel:988'
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Calling Emergency Services..."))
@@ -117,17 +127,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Helper to make code cleaner
-  bool _containsAny(String text, List<String> keywords) {
-    for (var word in keywords) {
-      if (text.contains(word)) return true;
-    }
-    return false;
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Get current user email for display
     final user = FirebaseAuth.instance.currentUser;
     final String displayName = user?.email?.split('@')[0] ?? "User";
 
@@ -159,7 +160,6 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. WELCOME SECTION
             Text(
               "Hello, $displayName 👋",
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
@@ -170,7 +170,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 30),
 
-            // 2. AI DIAGNOSIS CARD (Camera)
+            // AI CAMERA CARD
             GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -188,34 +188,20 @@ class _HomePageState extends State<HomePage> {
                   ),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    )
+                    BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))
                   ],
                 ),
                 child: Row(
                   children: [
                     const Icon(Icons.camera_alt, color: Colors.white, size: 40),
                     const SizedBox(width: 20),
-                    Expanded(
+                    const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "AI Face Scan",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            "Let AI analyze your facial expression",
-                            style: TextStyle(color: Colors.white.withOpacity(0.9)),
-                          ),
+                          Text("AI Face Scan", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 5),
+                          Text("Let AI analyze your facial expression", style: TextStyle(color: Colors.white70)),
                         ],
                       ),
                     ),
@@ -229,43 +215,28 @@ class _HomePageState extends State<HomePage> {
             const Divider(),
             const SizedBox(height: 10),
 
-            // 3. TEXT ANALYSIS SECTION (New Feature!)
-            const Text(
-              "📝 Type how you feel",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            // TEXT INPUT
+            const Text("📝 Type how you feel", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5)
-                ],
+                boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5)],
               ),
               child: TextField(
                 controller: _textController,
-                textInputAction: TextInputAction.send, // Keyboard shows "Send" arrow
+                textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _analyzeTextAndNavigate(),
                 decoration: InputDecoration(
                   hintText: "e.g., 'I am NOT happy...'",
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                  
-                  // Clear Button (X)
                   suffixIcon: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Clear X Button
-                      IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.grey),
-                        onPressed: () => _textController.clear(),
-                      ),
-                      // Send Button
-                      IconButton(
-                        icon: const Icon(Icons.send, color: Colors.blue),
-                        onPressed: _analyzeTextAndNavigate,
-                      ),
+                      IconButton(icon: const Icon(Icons.clear, color: Colors.grey), onPressed: () => _textController.clear()),
+                      IconButton(icon: const Icon(Icons.send, color: Colors.blue), onPressed: _analyzeTextAndNavigate),
                     ],
                   ),
                 ),
@@ -274,14 +245,9 @@ class _HomePageState extends State<HomePage> {
 
             const SizedBox(height: 30),
 
-            // 4. MANUAL SELECTION TITLE
-            const Text(
-              "Or select emoji directly",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            // MANUAL EMOJI SELECTION
+            const Text("Or select emoji directly", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 15),
-
-            // 5. EMOJI GRID
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -298,8 +264,7 @@ class _HomePageState extends State<HomePage> {
                 _buildMoodCard(context, "Neutral", "😐", Colors.grey),
               ],
             ),
-            
-            const SizedBox(height: 50), // Bottom padding
+            const SizedBox(height: 50),
           ],
         ),
       ),
@@ -321,26 +286,14 @@ class _HomePageState extends State<HomePage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
           border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 5,
-              offset: const Offset(0, 3),
-            )
-          ],
+          boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 3))],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(emoji, style: const TextStyle(fontSize: 32)),
             const SizedBox(height: 8),
-            Text(
-              emotion,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
+            Text(emotion, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
           ],
         ),
       ),
@@ -348,130 +301,78 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// --- PRO NLP ENGINE ---
+// --- UPDATED NLP ENGINE (RETURNS MAP) ---
 class SentimentEngine {
-  static String analyze(String text) {
+  // Return type changed to Map<String, double>
+  static Map<String, double> analyze(String text) {
     String lowerText = text.toLowerCase();
     
     // 1. Initialize Scores
     Map<String, double> scores = {
-      'Happy': 0, 'Sad': 0, 'Angry': 0, 
-      'Fear': 0, 'Surprise': 0, 'Disgust': 0, 'Neutral': 0
+      'Happy': 0.0, 'Sad': 0.0, 'Angry': 0.0, 
+      'Fear': 0.0, 'Surprise': 0.0, 'Disgust': 0.0, 'Neutral': 0.1 
     };
 
-    // 2. The Brain (Vocabulary)
+    // 2. Vocabulary
     final Map<String, List<String>> vocab = {
-      'Happy': [
-        "happy", "joy", "love", "excited", "great", "awesome", "good", "best",
-        "wonderful", "blessed", "cheerful", "glad", "delighted", "fantastic",
-        "content", "peaceful", "proud", "win", "won", "yay", "fun", "better", "recovered"
-      ],
-      'Sad': [
-        "sad", "cry", "crying", "depressed", "unhappy", "lonely", "hurt",
-        "grief", "bad", "down", "broken", "tears", "hopeless", "miss",
-        "sorrow", "melancholy", "miserable", "pain", "loss", "fail", "terrible"
-      ],
-      'Angry': [
-        "angry", "mad", "hate", "furious", "rage", "stupid", "annoyed",
-        "irritated", "frustrated", "resent", "jealous", "envy", "livid",
-        "pissed", "fuming", "outrage", "offended", "hostile", "idiot"
-      ],
-      'Fear': [
-        "scared", "fear", "afraid", "terrified", "nervous", "anxious",
-        "panic", "worry", "worried", "horror", "frightened", "dread",
-        "uneasy", "stressed", "tense", "phobia", "threat", "shaking"
-      ],
-      'Surprise': [
-        "wow", "shock", "shocked", "amazing", "surprised", "surprise",
-        "unbelievable", "omg", "gosh", "stunned", "astonished", "startled",
-        "unexpected", "sudden", "disbelief", "whoa", "crazy", "insane"
-      ],
-      'Disgust': [
-        "ew", "eww", "gross", "disgust", "disgusting", "sick", "nasty",
-        "awful", "yuck", "repulsive", "revolting", "vomit", "puke",
-        "nauseous", "vile", "foul", "detest", "loathe", "ugh"
-      ]
+      'Happy': ["happy", "joy", "love", "excited", "great", "awesome", "good", "best", "wonderful", "blessed", "cheerful", "glad", "delighted", "fantastic", "content", "peaceful", "proud", "win", "won", "yay", "fun", "better", "recovered"],
+      'Sad': ["sad", "cry", "crying", "depressed", "unhappy", "lonely", "hurt", "grief", "bad", "down", "broken", "tears", "hopeless", "miss", "sorrow", "melancholy", "miserable", "pain", "loss", "fail", "terrible"],
+      'Angry': ["angry", "mad", "hate", "furious", "rage", "stupid", "annoyed", "irritated", "frustrated", "resent", "jealous", "envy", "livid", "pissed", "fuming", "outrage", "offended", "hostile", "idiot"],
+      'Fear': ["scared", "fear", "afraid", "terrified", "nervous", "anxious", "panic", "worry", "worried", "horror", "frightened", "dread", "uneasy", "stressed", "tense", "phobia", "threat", "shaking"],
+      'Surprise': ["wow", "shock", "shocked", "amazing", "surprised", "surprise", "unbelievable", "omg", "gosh", "stunned", "astonished", "startled", "unexpected", "sudden", "disbelief", "whoa", "crazy", "insane"],
+      'Disgust': ["ew", "eww", "gross", "disgust", "disgusting", "sick", "nasty", "awful", "yuck", "repulsive", "revolting", "vomit", "puke", "nauseous", "vile", "foul", "detest", "loathe", "ugh"]
     };
 
-    // 3. Tokenize (Clean split)
+    // 3. Tokenize
     List<String> words = lowerText.split(RegExp(r"[^a-z0-9']+"));
     
-    // 4. Analysis Loop
-    double segmentMultiplier = 1.0; // Changes when "but" is found
+    double segmentMultiplier = 1.0; 
 
     for (int i = 0; i < words.length; i++) {
       String word = words[i];
       if (word.isEmpty) continue;
 
-      // --- A. CONTRAST LOGIC (The "But" Rule) ---
       if (["but", "however", "yet", "although", "though"].contains(word)) {
-        // Punish previous emotions (divide by 2) because they are "old news"
         scores.updateAll((key, value) => value * 0.5);
-        
-        // Boost future emotions (x1.5) because they are the "current state"
         segmentMultiplier = 1.5;
         continue;
       }
 
-      // --- B. NEGATION & INTENSIFIERS ---
       double localMultiplier = 1.0;
-      
       if (i > 0) {
         String prev = words[i - 1];
-        
-        // Negation: "not happy" -> Flip score
         if (["not", "dont", "don't", "cant", "can't", "never", "no", "didnt", "didn't"].contains(prev)) {
           localMultiplier = -1.0; 
-        } 
-        // Intensifier: "very happy" -> Double score
-        else if (["very", "really", "so", "extremely", "super", "too", "totally"].contains(prev)) {
+        } else if (["very", "really", "so", "extremely", "super", "too", "totally"].contains(prev)) {
           localMultiplier = 2.0; 
         }
       }
 
-      // --- C. SCORING ---
       vocab.forEach((emotion, keywords) {
         for (var k in keywords) {
-          // Robust Match: "crying" matches "cry", "sadness" matches "sad"
           if (word == k || (word.length > 3 && word.startsWith(k))) {
-            
-            // Total Weight = (Base 1.0) * (Segment Importance) * (Negation/Intensifier)
             double points = 1.0 * segmentMultiplier * localMultiplier;
-            
             scores[emotion] = (scores[emotion] ?? 0) + points;
           }
         }
       });
     }
 
-    // 5. Post-Processing Fixes
-    // If "Happy" is negative (e.g. "not happy"), move points to "Sad"
-    if (scores['Happy']! < 0) {
-      scores['Sad'] = (scores['Sad'] ?? 0) + scores['Happy']!.abs();
-      scores['Happy'] = 0;
-    }
-    // If "Sad" is negative (e.g. "not sad"), move to "Happy"
-    if (scores['Sad']! < 0) {
-      scores['Happy'] = (scores['Happy'] ?? 0) + scores['Sad']!.abs();
-      scores['Sad'] = 0;
-    }
-    // "Not afraid" -> Neutral or Happy? Let's treat as Neutral boost
-    if (scores['Fear']! < 0) {
-      scores['Neutral'] = (scores['Neutral'] ?? 0) + 1.0;
-      scores['Fear'] = 0;
+    // Post-Processing
+    if (scores['Happy']! < 0) { scores['Sad'] = (scores['Sad'] ?? 0) + scores['Happy']!.abs(); scores['Happy'] = 0; }
+    if (scores['Sad']! < 0) { scores['Happy'] = (scores['Happy'] ?? 0) + scores['Sad']!.abs(); scores['Sad'] = 0; }
+    if (scores['Fear']! < 0) { scores['Neutral'] = (scores['Neutral'] ?? 0) + 1.0; scores['Fear'] = 0; }
+
+    // --- NEW: NORMALIZATION (Calculate Percentages) ---
+    double total = 0.0;
+    scores.forEach((key, value) => total += value);
+
+    if (total > 0) {
+      scores.updateAll((key, value) => value / total); // Convert 2.0 -> 0.4 (40%)
+    } else {
+      scores['Neutral'] = 1.0;
     }
 
-    // 6. Tie-Breaker Logic (Long sentences might have ties)
-    String winner = "Neutral";
-    double maxScore = 0.1; // Minimal threshold
-
-    scores.forEach((emotion, score) {
-      if (score > maxScore) {
-        maxScore = score;
-        winner = emotion;
-      }
-    });
-
-    return winner;
+    return scores;
   }
 }
