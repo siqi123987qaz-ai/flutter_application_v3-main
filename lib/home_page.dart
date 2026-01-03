@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
 import 'camera_page.dart';
 import 'recommendation_page.dart';
+import 'history_service.dart';
+import 'history_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,11 +15,11 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final TextEditingController _textController = TextEditingController();
 
-  // Simple Sentiment Analysis Logic
+  // Sentiment Analysis Logic
   void _analyzeTextAndNavigate() {
     String text = _textController.text.trim();
     
-    // 1. ROBUSTNESS: Empty Check
+    // 1. Empty Check
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please type something..."), backgroundColor: Colors.orange),
@@ -25,14 +27,21 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    // 2. ROBUSTNESS: Close Keyboard
+    // 2. Close Keyboard
     FocusScope.of(context).unfocus();
 
-    // 3. NLP ENGINE: Calculate Scores
-    // This uses the "Incredible" scoring logic below
+    // --- NEW: CRISIS INTERVENTION CHECK 🛑 ---
+    if (_isCrisis(text)) {
+      _showCrisisDialog();
+      return; // STOP HERE. Do not proceed to recommendation.
+    }
+    // ----------------------------------------
+
+    // 3. Normal Analysis
     String detectedEmotion = SentimentEngine.analyze(text);
 
-    // 4. Clear & Navigate
+    // 4. Save & Navigate
+    HistoryService.saveMood(detectedEmotion, text);
     _textController.clear();
     
     if (!mounted) return;
@@ -41,6 +50,69 @@ class _HomePageState extends State<HomePage> {
       context,
       MaterialPageRoute(
         builder: (context) => RecommendationPage(emotion: detectedEmotion),
+      ),
+    );
+  }
+
+  // --- SAFETY NET LOGIC ---
+  bool _isCrisis(String text) {
+    String lower = text.toLowerCase();
+    List<String> triggers = [
+      "kill myself", "suicide", "want to die", "end my life", 
+      "hurt myself", "cutting myself", "no reason to live", 
+      "better off dead", "give up on life"
+    ];
+
+    for (var t in triggers) {
+      if (lower.contains(t)) return true;
+    }
+    return false;
+  }
+
+  void _showCrisisDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User MUST click a button
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 30),
+            SizedBox(width: 10),
+            Text("You are not alone"),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("It sounds like you are going through a very difficult time."),
+            SizedBox(height: 10),
+            Text("Please reach out for help. There are people who want to support you."),
+            SizedBox(height: 20),
+            Text("Emergency Hotline: 988 (or your local number)", style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              _textController.clear();
+            },
+            child: const Text("I'm Safe", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              // In a real app, this would call 911/Helpline
+              // For now, we just close, but you can use url_launcher 'tel:988'
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Calling Emergency Services..."))
+              );
+            },
+            child: const Text("Get Help Now", style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
@@ -67,6 +139,12 @@ class _HomePageState extends State<HomePage> {
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history, color: Colors.blue),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryPage()));
+            },
+          ),
           IconButton(
             onPressed: () async {
               await FirebaseAuth.instance.signOut();

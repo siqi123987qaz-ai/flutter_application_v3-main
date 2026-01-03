@@ -8,6 +8,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 import 'recommendation_page.dart';
+import 'history_service.dart';
 
 class CameraPage extends StatefulWidget {
   const CameraPage({super.key});
@@ -407,6 +408,10 @@ class _CameraPageState extends State<CameraPage> {
               onPressed: () {
                 // 1. Calculate the result
                 String result = _calculateAverage();
+
+                // --- NEW: SAVE TO HISTORY ---
+                HistoryService.saveMood(result, "Face Scan Analysis");
+                // -----------------------------
                 
                 // 2. Navigate to the new page!
                 Navigator.push(
