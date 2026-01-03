@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart'; // Import the launcher
 
 class ContentListPage extends StatelessWidget {
   final String emotion;
@@ -12,9 +13,22 @@ class ContentListPage extends StatelessWidget {
     required this.themeColor
   });
 
+  // --- FUNCTION TO OPEN LINKS ---
+  Future<void> _launchURL(BuildContext context, String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    try {
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        throw 'Could not launch $url';
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Could not open link: $e"), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 1. Get the specific list for this Emotion + Category
     final List<Map<String, String>> items = _getSpecificContent(emotion, category);
 
     return Scaffold(
@@ -41,12 +55,12 @@ class ContentListPage extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.bold)
                 ),
                 subtitle: Text(item['subtitle']!),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                trailing: const Icon(Icons.open_in_new, size: 18, color: Colors.grey),
                 onTap: () {
-                  // Action when clicked (e.g. open YouTube link)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Opening: ${item['title']}"))
-                  );
+                  // Open the Real URL
+                  if (item['url'] != null && item['url']!.isNotEmpty) {
+                    _launchURL(context, item['url']!);
+                  }
                 },
               );
             },
@@ -58,157 +72,85 @@ class ContentListPage extends StatelessWidget {
     switch (category) {
       case 'Songs': return Icons.music_note;
       case 'Articles': return Icons.article;
-      case 'Videos': return Icons.play_arrow;
+      case 'Videos': return Icons.play_circle_fill;
       case 'Stories': return Icons.book;
       default: return Icons.star;
     }
   }
 
-  // --- THE DATA DATABASE ---
+  // --- THE DATA DATABASE (Now with REAL LINKS) ---
   List<Map<String, String>> _getSpecificContent(String emotion, String category) {
-    
-    // Clean the input to avoid bugs
     final String cleanEmotion = emotion.trim(); 
-    
-    print("DEBUG: Checking content for '$cleanEmotion' in '$category'"); // Check your Debug Console!
-    
+
     // 1. ANGRY 😡
-    if (emotion == 'Angry') {
+    if (cleanEmotion == 'Angry') {
       if (category == 'Songs') {
         return [
-          {'title': 'Weightless - Marconi Union', 'subtitle': 'Scientifically proven to reduce anxiety'},
-          {'title': 'Calm Down Playlist', 'subtitle': 'Soft vibes to cool the heat'},
-          {'title': 'Rain Sounds 1 Hour', 'subtitle': 'Wash away the frustration'},
-        ];
-      } else if (category == 'Articles') {
-        return [
-          {'title': 'The 4-7-8 Breathing Technique', 'subtitle': 'Cool down in 60 seconds'},
-          {'title': 'Why We Get Angry?', 'subtitle': 'Understanding the psychology of rage'},
-          {'title': 'Boxing for Stress Relief', 'subtitle': 'Channeling energy positively'},
+          {'title': 'Weightless - Marconi Union', 'subtitle': 'Most relaxing song on earth', 'url': 'https://www.youtube.com/watch?v=UfcAVejslrU'},
+          {'title': 'Rain Sounds 1 Hour', 'subtitle': 'Wash away the frustration', 'url': 'https://www.youtube.com/watch?v=mPZkdNFkNps'},
         ];
       } else if (category == 'Videos') {
         return [
-          {'title': '5 Minute Anger Management Meditation', 'subtitle': 'Guided session'},
-          {'title': 'Funny Cat Fail Compilation', 'subtitle': 'Distract yourself with laughter'},
+          {'title': '5 Min Anger Meditation', 'subtitle': 'Guided session to cool down', 'url': 'https://www.youtube.com/watch?v=wkse4PPxkk4'},
+          {'title': 'Breathing Exercises', 'subtitle': 'Box breathing technique', 'url': 'https://www.youtube.com/watch?v=tEmt1Znux58'},
         ];
-      } else { // Stories
+      } else if (category == 'Articles') {
         return [
-          {'title': 'The Monk and the Boat', 'subtitle': 'A Zen story about anger'},
-          {'title': 'The Two Wolves', 'subtitle': 'Which one do you feed?'},
+          {'title': 'Controlling Anger', 'subtitle': 'Tips from APA', 'url': 'https://www.apa.org/topics/anger/control'},
         ];
       }
     }
 
     // 2. HAPPY 😊
-    else if (emotion == 'Happy') {
+    else if (cleanEmotion == 'Happy') {
       if (category == 'Songs') {
         return [
-          {'title': 'Walking on Sunshine', 'subtitle': 'Classic upbeat hit'},
-          {'title': 'Happy - Pharrell Williams', 'subtitle': 'Keep the mood high'},
-          {'title': 'Best Pop Hits 2025', 'subtitle': 'Dance it out!'},
-        ];
-      } else if (category == 'Articles') {
-        return [
-          {'title': 'The Science of Gratitude', 'subtitle': 'How to keep this feeling'},
-          {'title': 'Share the Joy', 'subtitle': 'Activities to do when happy'},
+          {'title': 'Happy - Pharrell Williams', 'subtitle': 'Keep the vibe high', 'url': 'https://www.youtube.com/watch?v=ZbZSe6N_BXs'},
+          {'title': 'Walking on Sunshine', 'subtitle': 'Classic upbeat hit', 'url': 'https://www.youtube.com/watch?v=iPUmE-tne5U'},
         ];
       } else if (category == 'Videos') {
         return [
-          {'title': 'Humans Being Bros', 'subtitle': 'Restoring faith in humanity'},
-          {'title': 'Uplifting TED Talks', 'subtitle': 'Inspiration for your day'},
-        ];
-      } else {
-        return [
-          {'title': 'The Golden Goose', 'subtitle': 'A classic fairy tale'},
-          {'title': 'Success Stories', 'subtitle': 'Real life inspiration'},
+          {'title': 'Humans Being Bros', 'subtitle': 'Restore faith in humanity', 'url': 'https://www.youtube.com/results?search_query=humans+being+bros'},
         ];
       }
     }
 
     // 3. SAD 😢
-    else if (emotion == 'Sad') {
+    else if (cleanEmotion == 'Sad') {
       if (category == 'Songs') {
         return [
-          {'title': 'Fix You - Coldplay', 'subtitle': 'A song for healing'},
-          {'title': 'Here Comes The Sun', 'subtitle': 'Reminding you it gets better'},
-          {'title': 'Lo-Fi Hip Hop Beats', 'subtitle': 'Chill beats to relax to'},
-        ];
-      } else if (category == 'Articles') {
-        return [
-          {'title': 'It is Okay Not To Be Okay', 'subtitle': 'Accepting your feelings'},
-          {'title': 'Self-Care Checklist', 'subtitle': 'Small steps to feel better'},
+          {'title': 'Fix You - Coldplay', 'subtitle': 'Lights will guide you home', 'url': 'https://www.youtube.com/watch?v=k4V3Mo61fJM'},
+          {'title': 'Lofi Hip Hop Radio', 'subtitle': 'Beats to relax/study to', 'url': 'https://www.youtube.com/watch?v=jfKfPfyJRdk'},
         ];
       } else if (category == 'Videos') {
         return [
-          {'title': 'Guided Meditation for Sadness', 'subtitle': 'Letting go of grief'},
-          {'title': 'Baby Animals Compilation', 'subtitle': 'Instant serotonin boost'},
+          {'title': 'Guided Meditation for Sadness', 'subtitle': 'Let go of grief', 'url': 'https://www.youtube.com/watch?v=WJk03cZ68y0'},
+          {'title': 'Funny Animal Compilation', 'subtitle': 'Instant mood boost', 'url': 'https://www.youtube.com/results?search_query=funny+animals'},
         ];
-      } else {
-        return [
-          {'title': 'The Star Thrower', 'subtitle': 'You make a difference'},
-          {'title': 'Everything Will Be Okay', 'subtitle': 'A short story of hope'},
+      } else if (category == 'Articles') {
+         return [
+          {'title': 'Coping with Sadness', 'subtitle': 'Healthy ways to deal', 'url': 'https://www.healthline.com/health/how-to-stop-being-sad'},
         ];
       }
     }
 
     // 4. FEAR / ANXIETY 😨
-    else if (emotion == 'Fear') {
-      if (category == 'Songs') {
+    else if (cleanEmotion == 'Fear') {
+      if (category == 'Videos') {
         return [
-          {'title': 'Breathe - Pink Floyd', 'subtitle': 'Slow down your heart rate'},
-          {'title': 'Theta Waves', 'subtitle': 'Deep relaxation frequencies'},
+          {'title': '10 Minute Yoga for Anxiety', 'subtitle': 'Release physical tension', 'url': 'https://www.youtube.com/watch?v=hJbRpHZr_d0'},
         ];
       } else if (category == 'Articles') {
         return [
-          {'title': 'Grounding Techniques', 'subtitle': '5-4-3-2-1 Method'},
-          {'title': 'Understanding Anxiety', 'subtitle': 'You are safe'},
-        ];
-      } else if (category == 'Videos') {
-        return [
-          {'title': '10 Minute Yoga for Anxiety', 'subtitle': 'Release tension'},
-          {'title': 'Box Breathing Visual', 'subtitle': 'Follow along guide'},
-        ];
-      } else {
-        return [
-          {'title': 'The Brave Little Toaster', 'subtitle': 'Courage in small places'},
+          {'title': 'Grounding Techniques', 'subtitle': '5-4-3-2-1 Method', 'url': 'https://www.healthline.com/health/grounding-techniques'},
         ];
       }
     }
 
-    // 5. SURPRISE 😲
-    else if (emotion == 'Surprise') {
-       if (category == 'Videos') {
-         return [{'title': 'Top 10 Plot Twists', 'subtitle': 'Keep the surprise going'}];
-       }
-       return [{'title': 'Curiosity Killed the Cat', 'subtitle': 'But satisfaction brought it back'}];
-    }
-    
-    // 6. DISGUST 🤢
-    else if (emotion == 'Disgust') {
-       if (category == 'Videos') {
-         return [{'title': 'Satisfying Deep Cleaning', 'subtitle': 'Cleanse your mind'}];
-       }
-       return [{'title': 'Fresh Start', 'subtitle': 'Reset your environment'}];
-    }
-
-    // 7. NEUTRAL 😐
-    else {
-      if (category == 'Songs') {
-        return [
-          {'title': 'Focus Playlist', 'subtitle': 'Music for work/study'},
-          {'title': 'Jazz Vibes', 'subtitle': 'Smooth background noise'},
-        ];
-      } else if (category == 'Articles') {
-        return [
-          {'title': 'Mindfulness 101', 'subtitle': 'Staying in the present'},
-          {'title': 'Productivity Hacks', 'subtitle': 'Make the most of your day'},
-        ];
-      } else {
-        return [
-          {'title': 'Daily News', 'subtitle': 'Stay updated'},
-          {'title': 'Podcast: The Daily', 'subtitle': 'Stories of our time'},
-        ];
-      }
-    }
+    // DEFAULT / FALLBACK
+    return [
+      {'title': 'Daily Mindfulness', 'subtitle': 'General wellness', 'url': 'https://www.youtube.com/results?search_query=mindfulness'},
+      {'title': 'Google News', 'subtitle': 'Read the latest', 'url': 'https://news.google.com'},
+    ];
   }
 }
