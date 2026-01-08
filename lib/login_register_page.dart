@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'auth_service.dart'; // <--- Import the new file
 
 class LoginRegisterPage extends StatefulWidget {
   const LoginRegisterPage({super.key});
@@ -15,6 +15,7 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
   bool isLogin = true;
   String error = '';
 
+  // 1. Email/Password Auth
   Future<void> handleAuth() async {
     try {
       if (isLogin) {
@@ -35,16 +36,35 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
     }
   }
 
-  Future<void> handleFacebookLogin() async {
+  // 2. NEW: Google Auth Wrapper
+  Future<void> handleGoogleLogin() async {
+    try {
+      // Show a loading message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Connecting to Google..."))
+      );
 
-    print('Login with Facebook - To be implemented');
+      final user = await AuthService.signInWithGoogle();
+
+      if (user == null) {
+         // User cancelled or failed
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text("Google Login Failed"))
+         );
+      }
+      // Note: If successful, the 'StreamBuilder' in main.dart (AuthGate) 
+      // will automatically detect the user and switch to HomePage.
+      
+    } catch (e) {
+      setState(() => error = e.toString());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(isLogin ? 'Login' : 'Register')),
-      body: Padding(
+      body: SingleChildScrollView( // Added scroll view to prevent overflow
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
@@ -74,52 +94,58 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
                   : 'Already have an account? Login'),
             ),
 
+            const SizedBox(height: 20),
             Row(
               children: [
-                Expanded(
-                  child:Divider(
-                    color: Colors.grey.shade300,
-                    thickness: 1,
-                  ),
-                ),
+                Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Text(
-                    'OR',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  child: Text('OR', style: TextStyle(color: Colors.grey.shade600)),
                 ),
-                Expanded(
-                  child: Divider(
-                    color: Colors.grey.shade300,
-                    thickness: 1,
-                  ),
-                ),
+                Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
               ],
             ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: handleFacebookLogin,
-              icon: const Icon(Icons.facebook, color: Colors.white),
-              label: const Text('Login with Facebook'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1877F2),
-                foregroundColor: Colors.white,
+            const SizedBox(height: 20),
+
+            // --- GOOGLE LOGIN BUTTON ---
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton( // Changed from OutlinedButton.icon to OutlinedButton
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.grey),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: handleGoogleLogin,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // THE REAL GOOGLE LOGO
+                    Image.asset(
+                      'assets/google_logo.png',
+                      height: 24, // Standard icon size
+                      width: 24,
+                    ),
+                    const SizedBox(width: 12), // Space between logo and text
+                    const Text(
+                      'Continue with Google',
+                      style: TextStyle(
+                        color: Colors.black, 
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-
-
-
-
-
-
-
+            
             if (error.isNotEmpty)
-              Text(error,
-                  style: const TextStyle(color: Colors.red, fontSize: 12)),
+              Padding(
+                padding: const EdgeInsets.only(top: 20.0),
+                child: Text(error, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ),
           ],
         ),
       ),

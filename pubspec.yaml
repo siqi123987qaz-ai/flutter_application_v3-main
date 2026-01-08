@@ -21,6 +21,7 @@ dependencies:
   webview_flutter: ^4.13.0
   shared_preferences: ^2.5.4
   intl: ^0.20.2
+  google_sign_in: ^6.2.1
 
 
 dev_dependencies:
@@ -49,3 +50,4 @@ flutter:
     - assets/labels.txt
     - assets/emotions_model2.tflite
     - assets/emotions_model_sajal.tflite
+    - assets/google_logo.png
