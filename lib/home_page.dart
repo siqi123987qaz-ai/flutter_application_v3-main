@@ -4,7 +4,8 @@ import 'camera_page.dart';
 import 'recommendation_page.dart';
 import 'history_service.dart';
 import 'history_page.dart';
-import 'analytics_page.dart'; // <--- NEW IMPORT
+import 'analytics_page.dart';
+import 'auth_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -148,7 +149,11 @@ class _HomePageState extends State<HomePage> {
           ),
           IconButton(
             onPressed: () async {
-              await FirebaseAuth.instance.signOut();
+              // This calls the helper function that signs out of BOTH
+              await AuthService.signOut(); 
+              
+              // (Optional) Force navigation back to Login Page if your Stream doesn't catch it
+              // Navigator.pop(context); 
             },
             icon: const Icon(Icons.logout, color: Colors.red),
             tooltip: "Logout",
