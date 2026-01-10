@@ -128,6 +128,56 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _showCameraInstructions() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Column(
+          children: [
+            Icon(Icons.face_retouching_natural, size: 50, color: Colors.blueAccent),
+            SizedBox(height: 10),
+            Text("Best Results Guide", style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("For the most accurate diagnosis, please ensure:", style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 15),
+            _InstructionRow(icon: Icons.light_mode, text: "Use good lighting"),
+            SizedBox(height: 10),
+            _InstructionRow(icon: Icons.block, text: "Remove glasses if possible"),
+            SizedBox(height: 10),
+            _InstructionRow(icon: Icons.face, text: "Keep hair/bangs off forehead"),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Cancel
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blueAccent,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              // START THE CAMERA
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CameraPage()),
+              );
+            },
+            child: const Text("I'm Ready", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -178,10 +228,11 @@ class _HomePageState extends State<HomePage> {
             // AI CAMERA CARD
             GestureDetector(
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const CameraPage()),
-                );
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute(builder: (context) => const CameraPage()),
+                // );
+                _showCameraInstructions();
               },
               child: Container(
                 padding: const EdgeInsets.all(20),
@@ -379,5 +430,22 @@ class SentimentEngine {
     }
 
     return scores;
+  }
+}
+
+class _InstructionRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _InstructionRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.blueGrey, size: 20),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text)),
+      ],
+    );
   }
 }

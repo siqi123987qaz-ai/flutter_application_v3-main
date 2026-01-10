@@ -165,74 +165,106 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   void _applySmartLogic(List<double> scores) {
-    // 1. Convert List to Map for the Report
+    // 1. Basic Setup
     Map<String, double> tempScores = {};
     for(int i=0; i<scores.length; i++) {
-      if (i < _labels.length) {
-        tempScores[_labels[i]] = scores[i];
-      }
+      if (i < _labels.length) tempScores[_labels[i]] = scores[i];
     }
 
-    // 2. Find Raw Winner
     double maxScore = -1;
     int maxIndex = -1;
+    double secondScore = -1;
+    int secondIndex = -1;
+
     for(int i=0; i < scores.length; i++) {
       if (scores[i] > maxScore) {
+        secondScore = maxScore;
+        secondIndex = maxIndex;
         maxScore = scores[i];
         maxIndex = i;
+      } else if (scores[i] > secondScore) {
+        secondScore = scores[i];
+        secondIndex = i;
       }
     }
-    String rawEmotion = _labels[maxIndex];
-    String currentEmotion = rawEmotion;
+
+    String currentEmotion = _labels[maxIndex];
+    String secondEmotion = (secondIndex != -1) ? _labels[secondIndex] : "";
     String debugNote = "";
 
-    // 3. Bias Correction Logic
-    if (currentEmotion == 'Sad' && maxScore < 0.7) {
-      int neutralIdx = _labels.indexOf('Neutral');
-      if (neutralIdx != -1) {
-        double neutralScore = scores[neutralIdx];
-        if (neutralScore > 0.3 && (maxScore - neutralScore).abs() < 0.2) {
-          currentEmotion = 'Neutral';
-          debugNote = "(Sad->Neu)";
-        }
+    // ---------------------------------------------------------
+    // THE CLEAN HIERARCHY LOGIC
+    // ---------------------------------------------------------
+    
+    // Get key scores
+    double neutralScore = tempScores['Neutral'] ?? 0.0;
+    double sadScore = tempScores['Sad'] ?? 0.0;
+    double angryScore = tempScores['Angry'] ?? 0.0;
+
+    // RULE 1: ANGRY CHECK 
+    // Angry is "Tense". If the face is relaxed (Neutral > 10%), it is NOT Angry.
+    if (currentEmotion == 'Angry') {
+      if (neutralScore > 0.20) {
+        // If it looks Angry but also a bit Neutral... it's probably actually Sad.
+        currentEmotion = 'Sad';
+        debugNote = "(Angry->Sad)";
       }
     }
 
-    if ((currentEmotion == 'Disgust' || currentEmotion == 'Fear') && maxScore < 0.8) {
-      int secondBestIdx = -1;
-      double secondBestScore = -1;
-      for(int i=0; i < scores.length; i++) {
-        if (i == maxIndex) continue;
-        if (scores[i] > secondBestScore) {
-          secondBestScore = scores[i];
-          secondBestIdx = i;
-        }
-      }
-      
-      if (secondBestIdx != -1) {
-        String secondEmotion = _labels[secondBestIdx];
-        if (secondEmotion != 'Disgust' && secondEmotion != 'Fear' && secondBestScore > 0.4) {
-          currentEmotion = secondEmotion;
-          debugNote = "($rawEmotion->$currentEmotion)";
-        }
+    // ---------------------------------------------------------
+    // RULE 2: THE "HIDDEN SADNESS" BOOST (Fix for Phone Camera)
+    // ---------------------------------------------------------
+    // Problem: Phone cameras smooth out faces, so "Sad" looks like "Neutral".
+    // Solution: If the winner is Neutral, but Sad is close behind, choose Sad.
+    
+    if (currentEmotion == 'Neutral' && secondEmotion == 'Sad') {
+      // If the gap is small (less than 20%), trust Sadness.
+      // Example: Neutral 50%, Sad 35% -> Gap is 15% -> Result: SAD
+      if ((maxScore - secondScore) < 0.05) {
+        currentEmotion = 'Sad';
+        debugNote = "(Neu->Sad)";
       }
     }
+    
+    // RULE 3: DISGUST/FEAR FILTER
+    // These are rare. If low confidence, default to second best.
+    if ((currentEmotion == 'Disgust' || currentEmotion == 'Fear') && maxScore < 0.7) {
+       // Find second best
+       double best2 = -1;
+       String label2 = "";
+       tempScores.forEach((key, value) {
+         if (key != currentEmotion && value > best2) {
+           best2 = value;
+           label2 = key;
+         }
+       });
+       
+       if (label2 != "" && label2 != 'Disgust' && label2 != 'Fear' && best2 > 0.3) {
+         currentEmotion = label2;
+         debugNote = "($currentEmotion->$label2)";
+       }
+    }
+
+    // ---------------------------------------------------------
 
     // 4. Temporal Smoothing
     _emotionHistory.add(currentEmotion);
     if (_emotionHistory.length > _historyMaxLen) {
       _emotionHistory.removeAt(0);
     }
-
     String smoothedEmotion = _getMostCommonEmotion(_emotionHistory);
 
     if (mounted) {
       setState(() {
         _mainLabel = smoothedEmotion;
-        _subLabel = "Raw: $rawEmotion ${(maxScore*100).toInt()}% $debugNote";
-        _allScores = tempScores; // Update the variable for the report
+        // Print the debug note so you can see WHICH rule triggered
+        _subLabel = "Confidence: ${(maxScore*100).toInt()}% $debugNote";
+        _allScores = tempScores; 
       });
     }
+    
+    // DEBUG: Print to your console to see what's happening in real-time
+    print("Sad: $sadScore | Angry: $angryScore | Neutral: $neutralScore -> Result: $currentEmotion");
   }
 
   String _getMostCommonEmotion(List<String> history) {
@@ -326,8 +358,17 @@ class _CameraPageState extends State<CameraPage> {
   @override
   Widget build(BuildContext context) {
     if (!_isCameraInitialized) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    
+    // --- TOGGLE THIS FOR EMULATOR VS PHONE ---
+    // Set to TRUE for Real Phone (Selfie mode)
+    // Set to FALSE for Emulator (Webcam mode)
+    bool isMirrored = true; 
+    // -----------------------------------------
+
     final size = MediaQuery.of(context).size;
     var cameraSize = _controller!.value.previewSize!;
+    
+    // Scaling
     double scaleX = size.width / cameraSize.height;
     double scaleY = size.height / cameraSize.width;
 
@@ -335,12 +376,31 @@ class _CameraPageState extends State<CameraPage> {
       appBar: AppBar(title: const Text("Smart Emotion Scanner")),
       body: Stack(
         children: [
-          SizedBox(width: size.width, height: size.height, child: CameraPreview(_controller!)),
+          // 1. Camera
+          SizedBox(
+            width: size.width, 
+            height: size.height, 
+            child: CameraPreview(_controller!)
+          ),
+          
           if (_faces.isNotEmpty) ...[
-            CustomPaint(painter: FacePainter(_faces.first, scaleX, scaleY), child: Container()),
+            // 2. Face Box (Now uses the Switch)
+            SizedBox(
+              width: size.width,
+              height: size.height,
+              child: CustomPaint(
+                painter: FacePainter(_faces.first, scaleX, scaleY, isMirrored: isMirrored),
+              ),
+            ),
+            
+            // 3. Label (Also uses the Switch)
             Positioned(
               top: _faces.first.boundingBox.top * scaleY - 70,
-              left: _faces.first.boundingBox.left * scaleX,
+              // If mirrored, flip the calculation. If not, use standard left.
+              left: isMirrored 
+                  ? size.width - (_faces.first.boundingBox.right * scaleX) 
+                  : _faces.first.boundingBox.left * scaleX,
+              
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 color: Colors.red,
@@ -361,7 +421,7 @@ class _CameraPageState extends State<CameraPage> {
             ),
           ],
 
-          // --- DIAGNOSE BUTTON ---
+          // 4. Diagnose Button
           Positioned(
             bottom: 40, left: 30, right: 30,
             child: ElevatedButton(
@@ -370,22 +430,14 @@ class _CameraPageState extends State<CameraPage> {
                 backgroundColor: Colors.blueAccent
               ),
               onPressed: () {
-                // 1. Get the Data
                 Map<String, double> finalScores = Map.from(_allScores);
-                
-                // Fallback if empty (clicked too fast)
-                if (finalScores.isEmpty) {
-                   finalScores = {'Neutral': 1.0};
-                }
+                if (finalScores.isEmpty) finalScores = {'Neutral': 1.0};
 
-                // 2. Find Winner for History
                 String winner = "Neutral";
                 double max = -1;
                 finalScores.forEach((k,v) { if(v>max){max=v; winner=k;} });
 
-                // 3. Save History
                 HistoryService.saveMood(winner, "Face Scan Analysis", finalScores);
-                // 4. Navigate to NEW REPORT PAGE
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -406,16 +458,39 @@ class FacePainter extends CustomPainter {
   final Face face;
   final double scaleX;
   final double scaleY;
-  FacePainter(this.face, this.scaleX, this.scaleY);
+  final bool isMirrored; // <--- NEW VARIABLE
+
+  FacePainter(this.face, this.scaleX, this.scaleY, {required this.isMirrored});
+
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 3.0..color = Colors.red;
+    if (size.width == 0) return;
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..color = Colors.red;
+
     final rect = face.boundingBox;
+
+    double left, right;
+
+    if (isMirrored) {
+      // PHONE MODE: Flip the coordinates
+      left = size.width - (rect.right * scaleX);
+      right = size.width - (rect.left * scaleX);
+    } else {
+      // EMULATOR MODE: Use normal coordinates
+      left = rect.left * scaleX;
+      right = rect.right * scaleX;
+    }
+
     canvas.drawRect(
-      Rect.fromLTRB(rect.left * scaleX, rect.top * scaleY, rect.right * scaleX, rect.bottom * scaleY),
+      Rect.fromLTRB(left, rect.top * scaleY, right, rect.bottom * scaleY),
       paint,
     );
   }
+
   @override
   bool shouldRepaint(FacePainter oldDelegate) => true;
 }
