@@ -31,7 +31,7 @@ class MainApp extends StatelessWidget {
             if (user == null) {
               return const LoginRegisterPage();
             } else {
-              return const HomePage(); // Goes to the new beautiful dashboard
+              return const HomePage(); // Goes to the dashboard
             }
           }
           return const Scaffold(

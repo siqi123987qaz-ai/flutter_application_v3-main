@@ -359,7 +359,7 @@ class _HomePageState extends State<HomePage> {
 
 // --- UPDATED NLP ENGINE (RETURNS MAP) ---
 class SentimentEngine {
-  // Return type changed to Map<String, double>
+  // Returns: {'Happy': 0.6, 'Sad': 0.1, ...}
   static Map<String, double> analyze(String text) {
     String lowerText = text.toLowerCase();
     
@@ -369,17 +369,53 @@ class SentimentEngine {
       'Fear': 0.0, 'Surprise': 0.0, 'Disgust': 0.0, 'Neutral': 0.1 
     };
 
-    // 2. Vocabulary
-    final Map<String, List<String>> vocab = {
-      'Happy': ["happy", "joy", "love", "excited", "great", "awesome", "good", "best", "wonderful", "blessed", "cheerful", "glad", "delighted", "fantastic", "content", "peaceful", "proud", "win", "won", "yay", "fun", "better", "recovered"],
-      'Sad': ["sad", "cry", "crying", "depressed", "unhappy", "lonely", "hurt", "grief", "bad", "down", "broken", "tears", "hopeless", "miss", "sorrow", "melancholy", "miserable", "pain", "loss", "fail", "terrible"],
-      'Angry': ["angry", "mad", "hate", "furious", "rage", "stupid", "annoyed", "irritated", "frustrated", "resent", "jealous", "envy", "livid", "pissed", "fuming", "outrage", "offended", "hostile", "idiot"],
-      'Fear': ["scared", "fear", "afraid", "terrified", "nervous", "anxious", "panic", "worry", "worried", "horror", "frightened", "dread", "uneasy", "stressed", "tense", "phobia", "threat", "shaking"],
-      'Surprise': ["wow", "shock", "shocked", "amazing", "surprised", "surprise", "unbelievable", "omg", "gosh", "stunned", "astonished", "startled", "unexpected", "sudden", "disbelief", "whoa", "crazy", "insane"],
-      'Disgust': ["ew", "eww", "gross", "disgust", "disgusting", "sick", "nasty", "awful", "yuck", "repulsive", "revolting", "vomit", "puke", "nauseous", "vile", "foul", "detest", "loathe", "ugh"]
+    // --- A. PRE-PROCESS PHRASES (Handle multi-word meanings first) ---
+    // We remove them from text after finding them so they aren't counted twice.
+    Map<String, String> phrases = {
+      "give up": "Sad", "fed up": "Angry", "don't care": "Neutral",
+      "freak out": "Fear", "blown away": "Surprise", "make me sick": "Disgust",
+      "can't wait": "Happy", "looking forward": "Happy", "break down": "Sad"
     };
 
-    // 3. Tokenize
+    phrases.forEach((phrase, emotion) {
+      if (lowerText.contains(phrase)) {
+        scores[emotion] = (scores[emotion] ?? 0) + 2.0; // Strong points for phrases
+        lowerText = lowerText.replaceAll(phrase, ""); // Remove to avoid double counting
+      }
+    });
+
+    // --- B. EMOJI DETECTION (Run this BEFORE regex strips them!) ---
+    Map<String, List<String>> emojiMap = {
+      'Happy': ["😊", "😂", "🤣", "😁", "🥰", "😍", "👍", "🔥", "✨", "🎉"],
+      'Sad': ["😢", "😭", "😔", "😞", "💔", "☹️", "😓", "😿"],
+      'Angry': ["😡", "🤬", "😠", "😤", "👿", "🖕", "👎"],
+      'Fear': ["😱", "😨", "😰", "😖", "😬", "👀"],
+      'Surprise': ["😲", "🤯", "😮", "😯", "😳"],
+      'Disgust': ["🤢", "🤮", "💩", "😖"],
+    };
+
+    // Scan for emojis in the raw text
+    text.runes.forEach((int rune) {
+      var character = String.fromCharCode(rune);
+      emojiMap.forEach((emotion, emojis) {
+        if (emojis.contains(character)) {
+          scores[emotion] = (scores[emotion] ?? 0) + 1.5; // Emojis are worth 1.5 words
+        }
+      });
+    });
+
+    // --- C. VOCABULARY (Enhanced with Slang) ---
+    final Map<String, List<String>> vocab = {
+      'Happy': ["happy", "joy", "love", "excited", "great", "awesome", "good", "best", "wonderful", "blessed", "fun", "lit", "syok", "steady", "ok", "nice"],
+      'Sad': ["sad", "cry", "depressed", "lonely", "hurt", "bad", "down", "broken", "tears", "hopeless", "miss", "sien", "shag", "tired", "exhausted", "fail", "loser"],
+      'Angry': ["angry", "mad", "hate", "furious", "rage", "stupid", "annoyed", "irritated", "frustrated", "bengang", "geram", "stress", "stressed", "idiot", "useless"],
+      'Fear': ["scared", "fear", "afraid", "terrified", "nervous", "anxious", "panic", "worry", "worried", "shaking", "unsafe", "threat"],
+      'Surprise': ["wow", "shock", "shocked", "amazing", "surprised", "omg", "gosh", "stunned", "crazy", "insane", "unexpected"],
+      'Disgust': ["ew", "eww", "gross", "disgust", "sick", "nasty", "yuck", "vile", "foul", "trash", "garbage"]
+    };
+
+    // --- D. TOKENIZE & ANALYZE WORDS ---
+    // Now we split the remaining text to find keywords
     List<String> words = lowerText.split(RegExp(r"[^a-z0-9']+"));
     
     double segmentMultiplier = 1.0; 
@@ -388,45 +424,56 @@ class SentimentEngine {
       String word = words[i];
       if (word.isEmpty) continue;
 
-      if (["but", "however", "yet", "although", "though"].contains(word)) {
-        scores.updateAll((key, value) => value * 0.5);
-        segmentMultiplier = 1.5;
+      // Context Switchers
+      if (["but", "however", "yet"].contains(word)) {
+        scores.updateAll((key, value) => value * 0.5); // Dampen previous feelings
+        segmentMultiplier = 1.5; // Boost upcoming feelings
         continue;
       }
 
+      // Check Previous Word for Modifiers
       double localMultiplier = 1.0;
       if (i > 0) {
         String prev = words[i - 1];
-        if (["not", "dont", "don't", "cant", "can't", "never", "no", "didnt", "didn't"].contains(prev)) {
+        // Negation (Inverters)
+        if (["not", "dont", "don't", "cant", "can't", "never", "no", "didnt", "didn't", "wouldnt"].contains(prev)) {
           localMultiplier = -1.0; 
-        } else if (["very", "really", "so", "extremely", "super", "too", "totally"].contains(prev)) {
+        } 
+        // Boosters (Intensifiers)
+        else if (["very", "really", "so", "extremely", "super", "too", "totally"].contains(prev)) {
           localMultiplier = 2.0; 
+        }
+        // Dampeners (Diminishers)
+        else if (["kinda", "sorta", "bit", "little", "slightly"].contains(prev)) {
+          localMultiplier = 0.5;
         }
       }
 
+      // Match Word to Emotion
       vocab.forEach((emotion, keywords) {
-        for (var k in keywords) {
-          if (word == k || (word.length > 3 && word.startsWith(k))) {
-            double points = 1.0 * segmentMultiplier * localMultiplier;
-            scores[emotion] = (scores[emotion] ?? 0) + points;
-          }
+        if (keywords.contains(word) || (word.length > 4 && keywords.any((k) => word.startsWith(k)))) {
+          double points = 1.0 * segmentMultiplier * localMultiplier;
+          scores[emotion] = (scores[emotion] ?? 0) + points;
         }
       });
     }
 
-    // Post-Processing
+    // --- E. POST-PROCESSING (Fix Negatives & Normalize) ---
+    
+    // 1. Handle Negative Scores (e.g., "Not Happy" -> Adds to Sad)
     if (scores['Happy']! < 0) { scores['Sad'] = (scores['Sad'] ?? 0) + scores['Happy']!.abs(); scores['Happy'] = 0; }
     if (scores['Sad']! < 0) { scores['Happy'] = (scores['Happy'] ?? 0) + scores['Sad']!.abs(); scores['Sad'] = 0; }
-    if (scores['Fear']! < 0) { scores['Neutral'] = (scores['Neutral'] ?? 0) + 1.0; scores['Fear'] = 0; }
+    if (scores['Angry']! < 0) { scores['Neutral'] = (scores['Neutral'] ?? 0) + 0.5; scores['Angry'] = 0; }
+    if (scores['Fear']! < 0) { scores['Neutral'] = (scores['Neutral'] ?? 0) + 0.5; scores['Fear'] = 0; }
 
-    // --- NEW: NORMALIZATION (Calculate Percentages) ---
+    // 2. Convert to Percentages
     double total = 0.0;
     scores.forEach((key, value) => total += value);
 
     if (total > 0) {
-      scores.updateAll((key, value) => value / total); // Convert 2.0 -> 0.4 (40%)
+      scores.updateAll((key, value) => value / total); // e.g., 2.0 -> 0.4 (40%)
     } else {
-      scores['Neutral'] = 1.0;
+      scores['Neutral'] = 1.0; // Default if nothing detected
     }
 
     return scores;
