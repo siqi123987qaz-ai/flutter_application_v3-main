@@ -406,7 +406,7 @@ class SentimentEngine {
 
     // --- C. VOCABULARY (Enhanced with Slang) ---
     final Map<String, List<String>> vocab = {
-      'Happy': ["happy", "joy", "love", "excited", "great", "awesome", "good", "best", "wonderful", "blessed", "fun", "lit", "syok", "steady", "ok", "nice"],
+      'Happy': ["happy", "joy", "love", "excited", "great", "awesome", "good", "best", "wonderful", "blessed", "fun", "lit", "syok", "steady", "nice"],
       'Sad': ["sad", "cry", "depressed", "lonely", "hurt", "bad", "down", "broken", "tears", "hopeless", "miss", "sien", "shag", "tired", "exhausted", "fail", "loser"],
       'Angry': ["angry", "mad", "hate", "furious", "rage", "stupid", "annoyed", "irritated", "frustrated", "bengang", "geram", "stress", "stressed", "idiot", "useless"],
       'Fear': ["scared", "fear", "afraid", "terrified", "nervous", "anxious", "panic", "worry", "worried", "shaking", "unsafe", "threat"],
