@@ -71,7 +71,7 @@ class _HomePageState extends State<HomePage> {
   bool _isCrisis(String text) {
     String lower = text.toLowerCase();
     List<String> triggers = [
-      "kill myself", "suicide", "want to die", "end my life", 
+      "kill myself", "Killing myself", "suicide", "want to die", "end my life", 
       "hurt myself", "cutting myself", "no reason to live", 
       "better off dead", "give up on life"
     ];
