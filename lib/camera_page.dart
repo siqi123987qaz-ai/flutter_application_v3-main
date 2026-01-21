@@ -60,7 +60,7 @@ class _CameraPageState extends State<CameraPage> {
 
   Future<void> _loadModelAndLabels() async {
     try {
-      _interpreter = await Interpreter.fromAsset('assets/emotions_model_sajal.tflite');
+      _interpreter = await Interpreter.fromAsset('assets/emotions_model.tflite');
       var inputTensor = _interpreter!.getInputTensors().first;
       _inputWidth = inputTensor.shape[1];
       _inputHeight = inputTensor.shape[2];
