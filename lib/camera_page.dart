@@ -218,8 +218,8 @@ class _CameraPageState extends State<CameraPage> {
     // Solution: If the winner is Neutral, but Sad is close behind, choose Sad.
     
     if (currentEmotion == 'Neutral' && secondEmotion == 'Sad') {
-      // If the gap is small (less than 20%), trust Sadness.
-      // Example: Neutral 50%, Sad 35% -> Gap is 15% -> Result: SAD
+      // If the gap is small (less than 5%), trust Sadness.
+      // Example: Neutral 50%, Sad 48% -> Gap is 2% -> Result: SAD
       if ((maxScore - secondScore) < 0.05) {
         currentEmotion = 'Sad';
         debugNote = "(Neu->Sad)";

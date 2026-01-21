@@ -4,7 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 class AuthService {
   static Future<UserCredential?> signInWithGoogle() async {
     try {
-      // 1. Create the instance (This is the unnamed constructor)
+      // 1. Create the instance
       final GoogleSignIn googleSignIn = GoogleSignIn(); 
 
       // 2. Trigger the dialog
