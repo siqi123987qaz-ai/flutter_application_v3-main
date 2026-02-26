@@ -10,19 +10,19 @@ To build and run this application, you must have the following tools installed o
 
 
 
-###### 1\. Flutter SDK
+#### 1\. Flutter SDK
 
 Version Required: Compatible with Dart SDK ^3.8.1 (Ensure you have the latest stable release of Flutter).
 
 
 
-###### 2\. Java Development Kit (JDK)
+#### 2\. Java Development Kit (JDK)
 
 Version Required: Java 11 (Specified in android/app/build.gradle.kts).
 
 
 
-###### 3\. Android Studio \& Android SDK
+#### 3\. Android Studio \& Android SDK
 
 Required for: Android emulation and compiling.
 
@@ -32,7 +32,7 @@ Installation: Open Android Studio > SDK Manager > SDK Tools > Check "NDK (Side b
 
 
 
-###### 4\. Code Editor
+#### 4\. Code Editor
 
 Recommended: Visual Studio Code or Android Studio.
 
@@ -44,8 +44,8 @@ Recommended: Visual Studio Code or Android Studio.
 
 1. Clone the Repository
 
-|git clone <your-repository-url><br />cd flutter\_application\_2|
-|-|
+git clone <your-repository-url>
+cd flutter_application_2
 
 
 
@@ -53,8 +53,7 @@ Recommended: Visual Studio Code or Android Studio.
 
 Download the required libraries listed in pubspec.yaml:
 
-|flutter pub get|
-|-|
+flutter pub get
 
 
 
@@ -73,16 +72,14 @@ This project uses Firebase. Ensure the google-services.json file is present in t
 Ensure the following assets are present in the assets/ directory as defined in pubspec.yaml:
 
 emotions\_model.tflite
-
 labels.txt
-
 google\_logo.png
 
 
 
 ### How to Run
 
-##### Run with Emulator
+#### Run with Emulator
 
 1. Start an Emulator or Connect a Device
 
