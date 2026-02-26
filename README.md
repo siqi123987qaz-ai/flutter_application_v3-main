@@ -34,7 +34,7 @@ Installation: Open Android Studio > SDK Manager > SDK Tools > Check "NDK (Side b
 
 #### 4\. Code Editor
 
-Recommended: Visual Studio Code or Android Studio.
+Recommended: Visual Studio Code or Android Studio
 
 
 
