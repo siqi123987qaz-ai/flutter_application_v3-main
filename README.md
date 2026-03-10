@@ -43,24 +43,24 @@ Recommended: Visual Studio Code or Android Studio.
 
 ## Installation Instructions
 
-1. Clone the Repository
+**A. Clone the Repository**
 
-git clone <your-repository-url>
+git clone https://github.com/siqi123987qaz-ai/Feeling_Diagnostic_Application.git
+
 cd flutter_application_2
 
 
 
-2. Install Dependencies
+**B. Install Dependencies**
 
 Download the required libraries listed in pubspec.yaml:
-
 flutter pub get
 
 
 
 
 
-3. Firebase Configuration
+**C. Firebase Configuration**
 
 This project uses Firebase. Ensure the google-services.json file is present in the android/app/ directory.
 
@@ -68,7 +68,7 @@ This project uses Firebase. Ensure the google-services.json file is present in t
 
 
 
-4\. Assets \& Models
+**D. Assets \& Models**
 
 Ensure the following assets are present in the assets/ directory as defined in pubspec.yaml:
 
@@ -82,13 +82,13 @@ google\_logo.png
 
 ### Run with Emulator
 
-1. Start an Emulator or Connect a Device
+**1\. Start an Emulator or Connect a Device**
 
 Ensure USB debugging is enabled on your physical Android device, or start an Android Emulator (AVD) via Android Studio.
 
 
 
-2\. Run the Application
+**2\. Run the Application**
 
 Execute the following command in your terminal: flutter run
 
@@ -104,7 +104,7 @@ build/app/outputs/flutter-apk/app-release.apk
 
 
 
-1. Transfer to Phone
+**1\. Transfer to Phone**
 
 Send this file to your Android phone using any method you prefer:
 
@@ -114,7 +114,7 @@ Send this file to your Android phone using any method you prefer:
 
 
 
-2\. Install on Phone
+**2\. Install on Phone**
 
 &nbsp;	1. Open your File Manager (or the app you used to receive the file).
 
