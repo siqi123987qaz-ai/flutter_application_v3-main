@@ -4,25 +4,25 @@ This is a Flutter mobile application designed for feeling diagnosis using facial
 
 
 
-### Tools \& Prerequisites
+## Tools \& Prerequisites
 
 To build and run this application, you must have the following tools installed on your development machine.
 
 
 
-#### 1\. Flutter SDK
+### 1\. Flutter SDK
 
 Version Required: Compatible with Dart SDK ^3.8.1 (Ensure you have the latest stable release of Flutter).
 
 
 
-#### 2\. Java Development Kit (JDK)
+### 2\. Java Development Kit (JDK)
 
 Version Required: Java 11 (Specified in android/app/build.gradle.kts).
 
 
 
-#### 3\. Android Studio \& Android SDK
+### 3\. Android Studio \& Android SDK
 
 Required for: Android emulation and compiling.
 
@@ -32,7 +32,7 @@ Installation: Open Android Studio > SDK Manager > SDK Tools > Check "NDK (Side b
 
 
 
-#### 4\. Code Editor
+### 4\. Code Editor
 
 Recommended: Visual Studio Code or Android Studio.
 
@@ -41,7 +41,7 @@ Recommended: Visual Studio Code or Android Studio.
 
 
 
-### Installation Instructions
+## Installation Instructions
 
 1. Clone the Repository
 
@@ -78,9 +78,9 @@ google\_logo.png
 
 
 
-### How to Run
+## How to Run
 
-#### Run with Emulator
+### Run with Emulator
 
 1. Start an Emulator or Connect a Device
 
@@ -96,7 +96,7 @@ Execute the following command in your terminal: flutter run
 
 
 
-##### Installing Existing APK (Recommended)
+### Installing Existing APK (Recommended)
 
 The project includes a pre-built APK file located at:
 
@@ -132,7 +132,7 @@ Send this file to your Android phone using any method you prefer:
 
 
 
-### Libraries \& Dependencies
+## Libraries \& Dependencies
 
 The project relies on the following key packages (from pubspec.yaml):
 
@@ -151,7 +151,7 @@ The project relies on the following key packages (from pubspec.yaml):
 |webview\_flutter|^4.13.0|Display web content|
 |shared\_preferences|^2.5.4|Local data storage|
 
-### 
+## 
 
 
 
