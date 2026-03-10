@@ -47,8 +47,6 @@ Recommended: Visual Studio Code or Android Studio.
 
 git clone https://github.com/siqi123987qaz-ai/Feeling_Diagnostic_Application.git
 
-cd flutter_application_2
-
 
 
 **B. Install Dependencies**
