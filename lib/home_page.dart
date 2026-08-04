@@ -69,17 +69,94 @@ class _HomePageState extends State<HomePage> {
 
   // --- SAFETY NET LOGIC ---
   bool _isCrisis(String text) {
-    String lower = text.toLowerCase();
-    List<String> triggers = [
-      "kill myself", "Killing myself", "suicide", "want to die", "end my life", 
-      "hurt myself", "cutting myself", "no reason to live", 
-      "better off dead", "give up on life"
+    final normalized = text
+        .toLowerCase()
+        .replaceAll("@", "a")
+        .replaceAll(r"$", "s")
+        .replaceAll("0", "o")
+        .replaceAll("1", "i")
+        .replaceAll("3", "e")
+        .replaceAll("4", "a")
+        .replaceAll("5", "s")
+        .replaceAll("7", "t")
+        .replaceAll(RegExp(r"[^a-z'\s]"), " ")
+        .replaceAll(RegExp(r"\s+"), " ")
+        .trim();
+    final compact = normalized.replaceAll(" ", "");
+
+    final immediateRiskPatterns = [
+      RegExp(r"\b(kill|killing)\s+(myself|me)\b"),
+      RegExp(
+        r"\b(i\s*)?(want|wanna|need|going|gonna|plan|planning|about)\s+to\s+"
+        r"(die|end\s+my\s+life|kill\s+myself)\b",
+      ),
+      RegExp(r"\bi\s+(dont|don't|do\s+not)\s+want\s+to\s+live\b"),
+      RegExp(r"\bi\s+(wish|hope)\s+i\s+(was|were)\s+dead\b"),
+      RegExp(r"\b(end|ending)\s+my\s+life\b"),
+      RegExp(r"\b(take|taking)\s+my\s+own\s+life\b"),
+      RegExp(r"\bcommit\s+suicide\b"),
+      RegExp(r"\bsuicidal\b"),
+      RegExp(r"\bunalive\s+(myself|me)\b"),
+      RegExp(r"\bno\s+reason\s+to\s+live\b"),
+      RegExp(r"\b(can't|cant|cannot)\s+go\s+on\b"),
+      RegExp(r"\bi\s+won't\s+be\s+here\s+tomorrow\b"),
+      RegExp(r"\bthis\s+is\s+my\s+goodbye\b"),
+      RegExp(r"\bgoodbye\s+(everyone|world|all)\b"),
+      RegExp(r"\bi\s+have\s+a\s+plan\s+to\s+(die|kill\s+myself|end\s+it)\b"),
+      RegExp(r"\btonight\s+i\s+(will|might|may)\s+(die|end\s+it|kill\s+myself)\b"),
     ];
 
-    for (var t in triggers) {
-      if (lower.contains(t)) return true;
+    for (final pattern in immediateRiskPatterns) {
+      if (pattern.hasMatch(normalized)) return true;
     }
-    return false;
+
+    final compactImmediateSignals = [
+      "killmyself",
+      "killingmyself",
+      "endmylife",
+      "takemyownlife",
+      "iwanttodie",
+      "wannadie",
+      "kms",
+    ];
+
+    for (final signal in compactImmediateSignals) {
+      if (compact.contains(signal)) return true;
+    }
+
+    int riskScore = 0;
+    final weightedRiskPatterns = <RegExp, int>{
+      RegExp(r"\bsuicide\b"): 2,
+      RegExp(
+        r"\b(better\s+off\s+dead|wish\s+i\s+was\s+dead|"
+        r"wish\s+i\s+were\s+dead)\b",
+      ): 3,
+      RegExp(r"\b(want|wanna|need)\s+everything\s+to\s+stop\b"): 2,
+      RegExp(r"\b(disappear|vanish|not\s+exist|never\s+wake\s+up)\b"): 2,
+      RegExp(r"\b(give\s+up\s+on\s+life|done\s+with\s+life|tired\s+of\s+living)\b"): 3,
+      RegExp(r"\b(hurt|harm|cut|cutting)\s+myself\b"): 3,
+      RegExp(r"\bself\s*harm\b"): 3,
+      RegExp(r"\b(cut|cutting|burn|burning)\b"): 1,
+      RegExp(r"\b(overdose|pills|poison|jump\s+off|hang\s+myself)\b"): 3,
+      RegExp(r"\b(hopeless|worthless|empty|trapped|unbearable)\b"): 1,
+      RegExp(r"\bnobody\s+(cares|would\s+care|will\s+miss\s+me)\b"): 2,
+      RegExp(r"\bi\s+(can't|cant|cannot)\s+take\s+it\s+anymore\b"): 2,
+      RegExp(r"\bthere\s+is\s+no\s+way\s+out\b"): 2,
+      RegExp(r"\blife\s+(isn't|isnt|is\s+not)\s+worth\s+living\b"): 3,
+      RegExp(r"\bi\s+feel\s+unsafe\s+with\s+myself\b"): 3,
+      RegExp(r"\bi\s+might\s+do\s+something\s+to\s+myself\b"): 3,
+      RegExp(r"\bgoing\s+to\s+hurt\s+myself\b"): 3,
+      RegExp(r"\bi\s+made\s+a\s+goodbye\s+message\b"): 2,
+      RegExp(r"\b(no\s+future|nothing\s+left|can't\s+keep\s+living)\b"): 2,
+      RegExp(r"\b(i\s+have|i've\s+got|ive\s+got)\s+(pills|a\s+blade|a\s+knife|poison)\b"): 3,
+      RegExp(r"\b(wrote|writing)\s+(a\s+)?(note|goodbye)\b"): 2,
+    };
+
+    weightedRiskPatterns.forEach((pattern, weight) {
+      if (pattern.hasMatch(normalized)) riskScore += weight;
+    });
+
+    return riskScore >= 3;
   }
 
   void _showCrisisDialog() {

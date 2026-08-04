@@ -151,7 +151,7 @@ class ContentListPage extends StatelessWidget {
       if (category == 'Songs') {
         return [
           {'title': 'Fix You - Coldplay', 'subtitle': 'Lights will guide you home', 'url': 'https://www.youtube.com/watch?v=k4V3Mo61fJM'},
-          {'title': 'Lofi Hip Hop Radio', 'subtitle': 'Beats to relax/study to', 'url': 'https://www.youtube.com/watch?v=jfKfPfyJRdk'},
+          {'title': 'Lofi Hip Hop Radio', 'subtitle': 'Beats to relax/study to', 'url': 'https://www.youtube.com/watch?v=n61ULEU7CO0&list=RDn61ULEU7CO0&start_radio=1'},
           {'title': 'Someone You Loved - Lewis Capaldi', 'subtitle': 'Emotional ballad about loss', 'url': 'https://www.youtube.com/watch?v=zABLecsR5UE'},
           {'title': 'Paris in the Rain - Lauv', 'subtitle': 'Warm comfort during sadness', 'url': 'https://www.youtube.com/watch?v=kOCkne-Bku4'},
         ];
@@ -163,7 +163,7 @@ class ContentListPage extends StatelessWidget {
         ];
       } else if (category == 'Articles') {
         return [
-          {'title': 'Coping with Sadness', 'subtitle': 'Healthy ways to deal', 'url': 'https://www.healthline.com/health/how-to-stop-being-sad'},
+          {'title': 'Coping with Sadness', 'subtitle': 'Healthy ways to deal', 'url': 'https://www.talkspace.com/blog/how-to-deal-with-sadness/'},
           {'title': 'What to Do When You’re Sad: 11 Tips to Feel Better', 'subtitle': 'Practical steps to improve your mood', 'url': 'https://www.betterup.com/blog/what-to-do-when-you-are-sad'},
           {'title': 'Coping with Depression', 'subtitle': 'When you\'re depressed, you can\'t just will yourself to "snap out of it."', 'url': 'https://www.helpguide.org/articles/depression/coping-with-depression.htm'},
         ];
@@ -180,7 +180,7 @@ class ContentListPage extends StatelessWidget {
       if (category == 'Songs') {
         return [
           {'title': 'River Flows in You - Yiruma', 'subtitle': 'Soft melody that reduces tension and worry', 'url': 'https://www.youtube.com/watch?v=7maJOI3QMu0'},
-          {'title': 'Lofi Hip Hop Radio', 'subtitle': 'Beats to relax/study to', 'url': 'https://www.youtube.com/watch?v=jfKfPfyJRdk'},
+          {'title': 'Lofi Hip Hop Radio', 'subtitle': 'Beats to relax/study to', 'url': 'https://www.youtube.com/watch?v=n61ULEU7CO0&list=RDn61ULEU7CO0&start_radio=1'},
           {'title': 'Come Away With Me - Norah Jones', 'subtitle': 'Warm, gentle vocals that ease anxious thoughts', 'url': 'https://www.youtube.com/watch?v=lbjZPFBD6JU'},
           {'title': 'Better Together - Jack Johnson', 'subtitle': 'Calming rhythm and comforting lyrics', 'url': 'https://www.youtube.com/watch?v=seZMOTGCDag'},
         ];

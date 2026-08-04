@@ -1,0 +1,61 @@
+id,text,expected_crisis,category
+1,"I want to die",true,direct_intent
+2,"I don't want to live anymore",true,direct_intent
+3,"I am going to kill myself",true,direct_intent
+4,"Tonight I might end it",true,direct_intent
+5,"I have a plan to end my life",true,direct_intent
+6,"I wish I was dead",true,direct_intent
+7,"I want to take my own life",true,direct_intent
+8,"I feel suicidal today",true,direct_intent
+9,"This is my goodbye",true,goodbye_signal
+10,"Goodbye everyone",true,goodbye_signal
+11,"I won't be here tomorrow",true,goodbye_signal
+12,"I wrote a goodbye note and I feel hopeless",true,combined_risk
+13,"Nobody would care if I disappeared",true,combined_risk
+14,"I feel trapped and there is no way out",true,combined_risk
+15,"Life is not worth living",true,combined_risk
+16,"I cannot go on",true,combined_risk
+17,"I can't take it anymore",false,distress_only
+18,"I can't take it anymore, nobody cares",true,combined_risk
+19,"I feel unsafe with myself",true,self_harm_risk
+20,"I might do something to myself",true,self_harm_risk
+21,"I am going to hurt myself",true,self_harm_risk
+22,"I keep thinking about self harm",true,self_harm_risk
+23,"I have pills and I feel hopeless",true,method_plus_distress
+24,"I have a blade and nobody would care",true,method_plus_distress
+25,"I want everything to stop",false,distress_only
+26,"I want everything to stop and I feel trapped",true,combined_risk
+27,"I hope I never wake up",true,combined_risk
+28,"I am tired of living",true,combined_risk
+29,"I am done with life",true,combined_risk
+30,"I am better off dead",true,direct_intent
+31,"I wanna die",true,slang
+32,"I am gonna kill myself",true,slang
+33,"I want to unalive myself",true,slang
+34,"kms",true,abbreviation
+35,"I might kms",true,abbreviation
+36,"k!ll myself",true,obfuscated
+37,"I want to d!e",true,obfuscated
+38,"I want 2 die",false,unsupported_obfuscation
+39,"I feel hopeless",false,distress_only
+40,"I feel worthless and empty",false,distress_only
+41,"I am sad and exhausted",false,negative_emotion
+42,"I failed my exam and feel like a loser",false,negative_emotion
+43,"I hate this day",false,negative_emotion
+44,"I am angry and stressed",false,negative_emotion
+45,"I feel anxious and unsafe walking home",false,context_safe
+46,"I cut my finger while cooking",false,context_safe
+47,"I burned my hand by accident",false,context_safe
+48,"I need pills for my headache",false,context_safe
+49,"I read a suicide prevention article",false,context_safe
+50,"My friend mentioned suicide prevention training",false,context_safe
+51,"I want to disappear from social media for a week",false,context_safe
+52,"I am writing a goodbye email for my old job",false,context_safe
+53,"I cannot go on with this assignment tonight",true,false_positive_candidate
+54,"No future plans yet, I am just confused",false,context_safe
+55,"I am lonely but I will call my friend",false,protective_context
+56,"I feel hopeless but I am safe right now",false,protective_context
+57,"I had thoughts of self harm but I contacted support",true,past_or_supported_risk
+58,"I do not want to hurt myself",true,false_positive_candidate
+59,"I am scared I might hurt myself",true,self_harm_risk
+60,"I feel empty and nobody cares",true,combined_risk

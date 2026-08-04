@@ -35,8 +35,9 @@ class _CameraPageState extends State<CameraPage> {
   static const int _historyMaxLen = 6;
   
   // UI Variables
-  String _mainLabel = "Init..."; 
-  String _subLabel = ""; 
+  String _mainLabel = "Init...";
+  String _subLabel = "";
+  String _performanceLabel = "TFLite: -- ms";
   
   // --- NEW: STORES THE DATA FOR THE REPORT ---
   Map<String, double> _allScores = {}; 
@@ -46,6 +47,15 @@ class _CameraPageState extends State<CameraPage> {
   int _inputHeight = 48;
   bool _isProcessing = false;
   List<Face> _faces = [];
+  DateTime? _scanStartedAt;
+  int _latencySampleCount = 0;
+  int _latencyTotalMicros = 0;
+  int _latencyMinMicros = 0;
+  int _latencyMaxMicros = 0;
+  double _latestInferenceLatencyMs = 0;
+  double _averageInferenceLatencyMs = 0;
+
+  static const int _latencyLogEverySamples = 30;
 
   @override
   void initState() {
@@ -88,6 +98,7 @@ class _CameraPageState extends State<CameraPage> {
     );
 
     await _controller!.initialize();
+    _scanStartedAt = DateTime.now();
     _controller!.startImageStream((CameraImage image) {
       if (!_isProcessing) {
         _isProcessing = true;
@@ -155,12 +166,50 @@ class _CameraPageState extends State<CameraPage> {
 
       int numClasses = _labels.length > 0 ? _labels.length : 7;
       var output = List.filled(1 * numClasses, 0.0).reshape([1, numClasses]);
+      final inferenceStopwatch = Stopwatch()..start();
       _interpreter!.run(input.reshape([1, _inputWidth, _inputHeight, 1]), output);
+      inferenceStopwatch.stop();
+      _recordInferenceLatency(inferenceStopwatch.elapsed);
 
       _applySmartLogic(output[0]);
 
     } catch (e) {
       print("AI Error: $e");
+    }
+  }
+
+  void _recordInferenceLatency(Duration elapsed) {
+    final micros = elapsed.inMicroseconds;
+    if (micros <= 0) return;
+
+    _latencySampleCount++;
+    _latencyTotalMicros += micros;
+    _latencyMinMicros = _latencyMinMicros == 0 || micros < _latencyMinMicros
+        ? micros
+        : _latencyMinMicros;
+    if (micros > _latencyMaxMicros) _latencyMaxMicros = micros;
+
+    _latestInferenceLatencyMs = micros / 1000.0;
+    _averageInferenceLatencyMs = (_latencyTotalMicros / _latencySampleCount) / 1000.0;
+    _performanceLabel =
+        "TFLite: ${_latestInferenceLatencyMs.toStringAsFixed(1)} ms | "
+        "Avg: ${_averageInferenceLatencyMs.toStringAsFixed(1)} ms";
+
+    if (_latencySampleCount % _latencyLogEverySamples == 0) {
+      final elapsedScan = _scanStartedAt == null
+          ? Duration.zero
+          : DateTime.now().difference(_scanStartedAt!);
+      final minMs = _latencyMinMicros / 1000.0;
+      final maxMs = _latencyMaxMicros / 1000.0;
+      debugPrint(
+        "PERF_INFERENCE_LATENCY "
+        "samples=$_latencySampleCount "
+        "latestMs=${_latestInferenceLatencyMs.toStringAsFixed(2)} "
+        "avgMs=${_averageInferenceLatencyMs.toStringAsFixed(2)} "
+        "minMs=${minMs.toStringAsFixed(2)} "
+        "maxMs=${maxMs.toStringAsFixed(2)} "
+        "scanElapsedSec=${elapsedScan.inSeconds}",
+      );
     }
   }
 
@@ -414,6 +463,10 @@ class _CameraPageState extends State<CameraPage> {
                     Text(
                       _subLabel,
                       style: const TextStyle(color: Colors.yellowAccent, fontSize: 12),
+                    ),
+                    Text(
+                      _performanceLabel,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ],
                 ),
