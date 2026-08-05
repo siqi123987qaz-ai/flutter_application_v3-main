@@ -97,7 +97,7 @@ class ContentListPage extends StatelessWidget {
         ];
       } else if (category == 'Videos') {
         return [
-          {'title': '5 Min Anger Meditation', 'subtitle': 'Guided session to cool down', 'url': 'https://www.youtube.com/watch?v=wkse4PPxkk4'},
+          {'title': '10 Min Anger Meditation', 'subtitle': 'Guided session to cool down', 'url': 'https://www.youtube.com/watch?v=wkse4PPxkk4'},
           {'title': 'Punching bag workout', 'subtitle': 'Release anger through physical movement and adrenaline', 'url': 'https://www.youtube.com/shorts/C76SnI5S7z8'},
           {'title': 'Breathing Exercises', 'subtitle': 'Box breathing technique', 'url': 'https://www.youtube.com/watch?v=tEmt1Znux58'},
           {'title': 'Slow ASMR', 'subtitle': 'Creates a sense of safety and relaxation', 'url': 'https://www.youtube.com/watch?v=WJKm74IERAs'},
@@ -129,7 +129,7 @@ class ContentListPage extends StatelessWidget {
       } else if (category == 'Videos') {
         return [
           {'title': 'Humans Being Bros', 'subtitle': 'Restore faith in humanity', 'url': 'https://www.youtube.com/results?search_query=humans+being+bros'},
-          {'title': 'Adorable Animals', 'subtitle': 'Relaxed Joy', 'url': 'https://www.youtube.com/shorts/tWYki6dMU9g'},
+          {'title': 'Adorable Animals', 'subtitle': 'Relaxed Joy', 'url': 'https://youtube.com/shorts/IZMbqcn2wR8?si=GxtU0DEBWyJXLxOx'},
           {'title': 'Achieving Your Dreams', 'subtitle': 'Encourage messages from Denzel Washington', 'url': 'https://www.youtube.com/shorts/I85s62OCHHg'},
         ];
       } else if (category == 'Articles') {
@@ -141,7 +141,7 @@ class ContentListPage extends StatelessWidget {
       } else if (category == 'Stories') {
         return [
           {'title': 'The Little Things That Made My Day', 'subtitle': 'A personal story about noticing tiny moments of happiness', 'url': 'https://medium.com/@Stargirl./the-little-things-that-make-my-day-4ad0dff2cecf'},
-          {'title': 'From Routine to Radiance: Finding Joy in Simple Habits', 'subtitle': 'A story about turning everyday moments into joyful rituals', 'url': 'https://medium.com/@david.quitmeyer/how-a-random-act-of-kindness-changed-my-outlook-9068d5dff263'},
+          {'title': 'How a Random Act of Kindness Changed My Outlook', 'subtitle': 'A story about the impact of small acts of kindness', 'url': 'https://medium.com/@david.quitmeyer/how-a-random-act-of-kindness-changed-my-outlook-9068d5dff263'},
         ];
       }
     }
@@ -157,14 +157,14 @@ class ContentListPage extends StatelessWidget {
         ];
       } else if (category == 'Videos') {
         return [
-          {'title': 'Guided Meditation for Sadness', 'subtitle': 'Let go of grief', 'url': 'https://www.youtube.com/watch?v=WJk03cZ68y0'},
+          {'title': 'Guided Meditation for Sadness', 'subtitle': 'Let go of grief', 'url': 'https://youtu.be/HM7oTRPwtUQ?si=15zR2FBPs4mWuce3'},
           {'title': 'Funny Animal Compilation', 'subtitle': 'Instant mood boost', 'url': 'https://www.youtube.com/results?search_query=funny+animals'},
           {'title': 'a video to watch when you\'re sad.', 'subtitle': 'Gentle encouragement and perspective for coping with sadness', 'url': 'https://www.youtube.com/watch?v=hBzP8MtJf04'},
         ];
       } else if (category == 'Articles') {
         return [
           {'title': 'Coping with Sadness', 'subtitle': 'Healthy ways to deal', 'url': 'https://www.talkspace.com/blog/how-to-deal-with-sadness/'},
-          {'title': 'What to Do When You’re Sad: 11 Tips to Feel Better', 'subtitle': 'Practical steps to improve your mood', 'url': 'https://www.betterup.com/blog/what-to-do-when-you-are-sad'},
+          {'title': 'What to Do When You’re Sad: Tips to Feel Better', 'subtitle': 'Practical steps to improve your mood', 'url': 'https://www.betterup.com/blog/what-to-do-when-you-are-sad'},
           {'title': 'Coping with Depression', 'subtitle': 'When you\'re depressed, you can\'t just will yourself to "snap out of it."', 'url': 'https://www.helpguide.org/articles/depression/coping-with-depression.htm'},
         ];
       } else if (category == 'Stories') {
@@ -186,7 +186,7 @@ class ContentListPage extends StatelessWidget {
         ];
       } else if (category == 'Videos') {
         return [
-          {'title': '10 Minute Yoga for Anxiety', 'subtitle': 'Release physical tension', 'url': 'https://www.youtube.com/watch?v=hJbRpHZr_d0'},
+          {'title': 'Yoga for Anxiety', 'subtitle': 'Release physical tension', 'url': 'https://www.youtube.com/watch?v=hJbRpHZr_d0'},
           {'title': 'Guided Meditation for Anxiety', 'subtitle': 'Calm the racing mind', 'url': 'https://www.youtube.com/watch?v=MIr3RsUWrdo'},
           {'title': 'ASMR for Anxiety Relief', 'subtitle': 'Soothing sounds to ease anxiety', 'url': 'https://www.youtube.com/watch?v=CM_ZDGorTn8'},
         ];
@@ -198,7 +198,7 @@ class ContentListPage extends StatelessWidget {
         ];
       } else if (category == 'Stories') {
         return [
-          {'title': 'Crawling Through Fear', 'subtitle': 'This is a first-person story by Sahil Patel about struggling with sadness', 'url': 'https://medium.com/know-thyself-heal-thyself/my-story-of-feeling-sad-and-keeping-it-a-secret-3bf5bf9ccc98'},
+          {'title': 'Crawling Through Fear', 'subtitle': 'This is a first-person story by  Jimmy Lamanna about struggling with sadness', 'url': 'https://adaa.org/living-with-anxiety/personal-stories/crawling-through-fear'},
           {'title': 'It\'s OK not to be OK', 'subtitle': 'We should distinguish it from ordinary sadness', 'url': 'https://www.theguardian.com/commentisfree/2017/dec/06/its-ok-not-to-be-ok-why-we-need-to-embrace-sadness'},
         ];
       }
